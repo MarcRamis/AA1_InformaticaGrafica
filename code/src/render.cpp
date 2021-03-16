@@ -9,6 +9,15 @@
 
 #include "GL_framework.h"
 
+///////////////////// LOAD MODEL
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include <string>
+
+#include <glm\gtc\type_ptr.hpp>
+#include <glm\gtc\matrix_transform.hpp>
+
 ///////// fw decl
 namespace ImGui {
 	void Render();
@@ -398,7 +407,11 @@ GLuint VAO;		// VAO (Vertex Array Object)
 GLuint VBO;		// VBF (Vertex Buffer Object)
 GLuint unifLocation;
 
-const float vertices[]
+std::vector< glm::vec3 > vertices;
+std::vector< glm::vec2 > uvs;
+std::vector< glm::vec3 > normals;
+
+const float fVertices[]
 {
 	0.5, -0.5, 0.5,
 	0.0, 0.5, 0.5,
@@ -409,6 +422,19 @@ const float color[]
 {
 	0.0, 0.8, 1.0, 1.0
 };
+
+extern bool loadOBJ(const char*
+	path,
+	std::vector < glm::vec3 >&
+	out_vertices,
+	std::vector < glm::vec2 >& out_uvs,
+	std::vector < glm::vec3 >&
+	out_normals
+);
+
+extern void ReadFile(std::vector < glm::vec3 >& out_vertices,
+	std::vector < glm::vec2 >& out_uvs,
+	std::vector < glm::vec3 >& out_normals);
 
 // A vertex shader that assigns a static position to the vertex
 static const GLchar* vertex_shader_source[] =
@@ -503,6 +529,16 @@ void GLinit(int width, int height) {
 	//glBindVertexArray(0);
 
 	/////////////////////////////////////////////////////
+	
+	// READ 
+	ReadFile(vertices, uvs, normals);
+
+	// LOAD MODEL
+	bool res = loadOBJ("res/cube.obj", vertices, uvs, normals);
+	
+	// DRAW
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
 }
 void GLcleanup() {
 	Axis::cleanupAxis();
@@ -527,7 +563,7 @@ void GLrender(float dt) {
 	RV::_MVP = RV::_projection * RV::_modelView;
 	
 	Axis::drawAxis();
-	Cube::drawTwoCubes();
+	//Cube::drawTwoCubes();
 
 	//float currentTime = ImGui::GetTime();
 	//const GLfloat color[] = { abs(sin(currentTime)), abs(cos(currentTime)), 0.0f, 1.0f };
@@ -539,6 +575,7 @@ void GLrender(float dt) {
 	glPointSize(40.f);
 	glBindVertexArray(VAO);
 	glDrawArrays(GL_TRIANGLES, 0, 3);*/
+
 
 	/////////////////////////////////////////////////////TODO
 	// Do your render code here

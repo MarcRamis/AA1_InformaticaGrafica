@@ -404,6 +404,9 @@ void drawTwoCubes() {
 /////////////////////////////////////////////////
 GLuint program;
 GLuint VAO;		// VAO (Vertex Array Object)
+				// Maintains all of the state related to input of the
+				// OpenGL pipeline.
+
 GLuint VBO;		// VBF (Vertex Buffer Object)
 GLuint unifLocation;
 
@@ -474,71 +477,67 @@ void GLinit(int width, int height) {
 
 	/////////////////////////////////////////////////////TODO
 
-	//// Compile the shaders
-	//GLuint vertex_shader;
-	//GLuint fragment_shader;
-	//
-	//vertex_shader = glCreateShader(GL_VERTEX_SHADER);				// creates an empty shader object
-	//glShaderSource(vertex_shader, 1, vertex_shader_source, NULL);	// hands shader source code to the shader object
-	//glCompileShader(vertex_shader);									// compiles whatever source code is contained in the shader object
+	// Compile the shaders
+	GLuint vertex_shader;
+	GLuint fragment_shader;
+	
+	vertex_shader = glCreateShader(GL_VERTEX_SHADER);				// Creates an empty shader object
+	glShaderSource(vertex_shader, 1, vertex_shader_source, NULL);	// Hands shader source code to the shader object
+	glCompileShader(vertex_shader);									// Compiles whatever source code is contained in the shader object
+	
+																	// Same for fragment_shader
+	fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragment_shader, 1, fragment_shader_source, NULL);
+	glCompileShader(fragment_shader);
+	
+	// Create the program that contains the shaders
+	program = glCreateProgram();
+	glAttachShader(program, vertex_shader);
+	glAttachShader(program, fragment_shader);
+	glLinkProgram(program);
 
-	//fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-	//glShaderSource(fragment_shader, 1, fragment_shader_source, NULL);
-	//glCompileShader(fragment_shader);
+	// The shaders will not be used anymore as they are now contained in the program
+	glDeleteShader(vertex_shader);
+	glDeleteShader(fragment_shader);
+	
+	glCreateVertexArrays(1, &VAO);		// Creates the VAO
+	glBindVertexArray(VAO);				// Binds the VAO to the current context (in glRender)
+	
+	// Create the vertex buffer object
+	glGenBuffers(1, &VBO);	// It contains arbitrary data for the vertices. In our case, its coordinates.
 
-	//// Create the program that contains the shaders
-	//program = glCreateProgram();
-	//glAttachShader(program, vertex_shader);
-	//glAttachShader(program, fragment_shader);
-	//glLinkProgram(program);
+	// From this point until we bind another buffer, calls related to the
+	// array buffer will use VBO.
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
-	//// The shaders will not be used anymore as they are now contained in the program
-	//glDeleteShader(vertex_shader);
-	//glDeleteShader(fragment_shader);
+	// For example, copy the data to the array buffer...
+		// READ 
+	ReadFile(vertices, uvs, normals);
 
-	//// Create the vertex array object
-	//// This object maintains the state related to the input of the OpenGL pipeline
-	//glCreateVertexArrays(1, &VAO);
-	//glBindVertexArray(VAO);
+	// LOAD MODEL
+	bool res = loadOBJ("res/cube.obj", vertices, uvs, normals);
 
-	//// Create the vertex buffer object
-	//	// It contains arbitrary data for the vertices. In our case, its coordinates.
-	//glGenBuffers(1, &VBO);
+	// DRAW
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
+	//glBufferData(GL_ARRAY_BUFFER /*type*/, sizeof(vertices)/*size of the data*/, fVertices/*The data*/, GL_STATIC_DRAW/*Hint*/);
 
-	//// From this point until we bind another buffer, calls related to the
-	//// array buffer will use VBO.
-	//glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-	//// For example, copy the data to the array buffer...
-	//glBufferData(GL_ARRAY_BUFFER /*type*/, sizeof(vertices)/*size of the data*/, vertices/*The data*/, GL_STATIC_DRAW/*Hint*/);
-
-	//// ...and specify the layout of the arbitrary data setting the attributes of the vertex buffer
+	// ...and specify the layout of the arbitrary data setting the attributes of the vertex buffer
 	//glVertexAttribPointer(
 	//	0 /*set the location for this attrib, must match the shader*/, 
 	//	3 /*size of the attrib*/,
 	//	GL_FLOAT,
 	//	GL_FALSE, //should the data be normalized?
-	//	3 * sizeof(float),//Space between consecutive attrib
+	//	3 * sizeof(float), //Space between consecutive attrib
 	//	(void*)0 //offset of where where the data begins in the buffer
 	//);
 
-	//// Once the attribute is specified, we enable it. The parameter is the location of the attribute
-	//glEnableVertexAttribArray(0);
+	// Once the attribute is specified, we enable it. The parameter is the location of the attribute
+	glEnableVertexAttribArray(0);
 
-	//// Not necessary, but recomendable as it ensures that we will not use the VAO accidentally.
-	//glBindVertexArray(0);
+	// Not necessary, but recomendable as it ensures that we will not use the VAO accidentally.
+	glBindVertexArray(0);
 
 	/////////////////////////////////////////////////////
-	
-	// READ 
-	ReadFile(vertices, uvs, normals);
-
-	// LOAD MODEL
-	bool res = loadOBJ("res/cube.obj", vertices, uvs, normals);
-	
-	// DRAW
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
 }
 void GLcleanup() {
 	Axis::cleanupAxis();
@@ -569,12 +568,31 @@ void GLrender(float dt) {
 	//const GLfloat color[] = { abs(sin(currentTime)), abs(cos(currentTime)), 0.0f, 1.0f };
 	//glClearBufferfv(GL_COLOR, 0, color);
 
-	/*glUseProgram(program);
-	unifLocation = glGetUniformLocation(program, "aCol");
-	glUniform4f(unifLocation, color[0], color[1], color[2], color[3]);
-	glPointSize(40.f);
+	// COLOR
+	//unifLocation = glGetUniformLocation(program, "aCol");
+	//glUniform4f(unifLocation, color[0], color[1], color[2], color[3]);
+
+	glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 0.0f));
+	glm::mat4 objMat = t;
+
+	glEnable(GL_PRIMITIVE_RESTART);
 	glBindVertexArray(VAO);
-	glDrawArrays(GL_TRIANGLES, 0, 3);*/
+	glUseProgram(program);
+	glUniformMatrix4fv(glGetUniformLocation(program, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+	glUniformMatrix4fv(glGetUniformLocation(program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	glUniformMatrix4fv(glGetUniformLocation(program, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+	glUniform4f(glGetUniformLocation(program, "color"), 0.1f, 1.f, 1.f, 0.f);
+	glUniform4f(glGetUniformLocation(program, "ambient"), 0.5f, 0.5f, 0.5f, 0.5f);
+	glDrawElements(GL_TRIANGLE_STRIP, vertices.size(), GL_UNSIGNED_BYTE, 0);
+	
+	glUseProgram(0);
+	glBindVertexArray(0);
+	glDisable(GL_PRIMITIVE_RESTART);
+	
+	//glPointSize(40.f);
+
+	//glBindVertexArray(VAO);
+	//glDrawArrays(GL_TRIANGLES, 0, 3);
 
 
 	/////////////////////////////////////////////////////TODO

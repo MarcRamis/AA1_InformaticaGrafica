@@ -210,6 +210,18 @@ void main() {\n\
 		glBindVertexArray(0);
 	}
 }
+
+struct WLight
+{
+	float r, g, b;
+	float ambient, diffuse, specular;
+	float lX, lY, lZ;
+
+	WLight(float _r, float _g, float _b, float _ambient, float _diffuse, float _specular, float _lX, float _lY, float _lZ)
+		: r(_r), g(_g), b(_b), ambient(_ambient), diffuse(_diffuse), specular(_specular), lX(_lX), lY(_lY), lZ(_lZ) {};
+};
+WLight wLight(0.5f, 0.f, 0.f, 0.5f, 1.f, 0.5f, 1.f, 0.f, 0.f);
+
 ////////////////////////////////////////////////// CUBE
 namespace Cube {
 	GLuint cubeVao;
@@ -288,6 +300,23 @@ void main() {\n\
 	//vert_wPos = objMat * vec4(in_Position, 1.0);\n\
 }";
 	//////////////// AMBIENT + DIFFUSE
+	/*
+	const char* cube_fragShader =
+		"#version 330\n\
+	in vec4 vert_Normal;\n\
+	out vec4 out_Color;\n\
+	uniform mat4 mv_Mat;\n\
+	uniform vec4 color;\n\
+	uniform vec4 dir_light; \n\
+	uniform vec4 ambient; \n\
+	uniform vec4 diffuse; \n\
+	void main() {\n\
+		vec4 ambientComp = color * ambient; \n\
+		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
+		out_Color = ambientComp + diffuseComp;\n\
+	}";
+	*/
+	//////////////// AMBIENT + DIFFUSE + SPECULAR
 	const char* cube_fragShader =
 		"#version 330\n\
 	in vec4 vert_Normal;\n\
@@ -389,10 +418,10 @@ void main() {\n\
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 		
-		glUniform4f(glGetUniformLocation(cubeProgram, "color"), 0.2f, 1.f, 1.f, 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "ambient"), 0.2f, 0.2f, 0.2f, 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), 1.f, 1.f, 1.f, 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), 1.0f, 0.f, 0.f, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "color"), wLight.r, wLight.g, wLight.b, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), wLight.lX, wLight.lX, wLight.lX, 1.f);
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 		
 		t = glm::translate(glm::mat4(), glm::vec3(1.0f, 2.0f, 3.0f));
@@ -438,7 +467,7 @@ namespace Model
 		uniform mat4 mvpMat;\n\
 		void main() {\n\
 		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
-		vert_Normal = mv_Mat * objMat * vec4(in_Normal, 0.0);\n\
+		vert_Normal = objMat * vec4(in_Normal, 0.0);\n\
 		}";
 
 	//////////////// NO MATERIAL
@@ -454,17 +483,21 @@ namespace Model
 			out_Color = color;\n\
 		}";
 		*/
-	//////////////// AMBIENT
+	//////////////// AMBIENT + DIFFUSE
 	const char* model_fragShader =
 		"#version 330\n\
-		in vec4 vert_Normal;\n\
-		out vec4 out_Color;\n\
-		uniform mat4 mv_Mat;\n\
-		uniform vec4 color;\n\
-		uniform vec4 ambient; \n\
-		void main() {\n\
-			out_Color = color*ambient;\n\
-		}";
+	in vec4 vert_Normal;\n\
+	out vec4 out_Color;\n\
+	uniform mat4 mv_Mat;\n\
+	uniform vec4 color;\n\
+	uniform vec4 dir_light; \n\
+	uniform vec4 ambient; \n\
+	uniform vec4 diffuse; \n\
+	void main() {\n\
+		vec4 ambientComp = color * ambient; \n\
+		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
+		out_Color = ambientComp + diffuseComp;\n\
+	}";
 	
 	//////////////// DIFFUSE
 	/*const char* model_fragShader =
@@ -532,8 +565,10 @@ namespace Model
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
-		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.1f, 1.f, 1.f, 0.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "ambient"), 0.5f, 0.5f, 0.5f, 0.5f);
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), wLight.r, wLight.g, wLight.b, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "dir_light"), wLight.lX, wLight.lY, wLight.lZ, 1.f);
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 		
 		glUseProgram(0);
@@ -548,18 +583,6 @@ GLuint VAO;		// VAO (Vertex Array Object)
 				// OpenGL pipeline.
 
 GLuint VBO;		// VBF (Vertex Buffer Object)
-
-const float fVertices[]
-{
-	0.5, -0.5, 0.5,
-	0.0, 0.5, 0.5,
-	-0.5, -0.5, 0.5
-};
-
-const float color[]
-{
-	0.0, 0.8, 1.0, 1.0
-};
 
 extern bool loadOBJ(const char*
 	path,
@@ -611,7 +634,7 @@ void GLinit(int width, int height) {
 
 	// Read & Load model
 	ReadFile(Model::vertices, Model::uvs, Model::normals);
-	bool res = loadOBJ("res/cube.obj", Model::vertices, Model::uvs, Model::normals);
+	bool res = loadOBJ("res/dragon.obj", Model::vertices, Model::uvs, Model::normals);
 	// Init model
 	Model::Init();
 
@@ -654,6 +677,19 @@ void GUI() {
 	ImGui::Begin("Physics Parameters", &show, 0);
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		/////////////////////////////////////////////////////////
+		ImGui::SliderFloat("R", &wLight.r, 0.0f, 1.0f);
+		ImGui::SliderFloat("G", &wLight.g, 0.0f, 1.0f);
+		ImGui::SliderFloat("B", &wLight.b, 0.0f, 1.0f);
+		
+		ImGui::SliderFloat("Ambient", &wLight.ambient, 0.0f, 1.0f);
+		ImGui::SliderFloat("Diffuse", &wLight.diffuse, 0.0f, 1.0f);
+		//ImGui::SliderFloat("Specular", &wLight.diffuse, 0.0f, 1.0f);
+		
+		ImGui::SliderFloat("Light X", &wLight.lX, -1.f, 1.0f);
+		ImGui::SliderFloat("Light Y", &wLight.lY, -1.f, 1.0f);
+		ImGui::SliderFloat("Light Z", &wLight.lZ, -1.f, 1.0f);
+		//ImGui::SliderFloat("Specular", &f, 0.0f, 1.0f);
 		/////////////////////////////////////////////////////////
 	}
 	// .........................

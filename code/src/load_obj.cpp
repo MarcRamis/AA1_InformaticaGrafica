@@ -23,7 +23,7 @@ void ReadFile(std::vector < glm::vec3 >& out_vertices,
 	std::vector< glm::vec2 > temp_uvs;
 	std::vector< glm::vec3 > temp_normals;
 
-	FILE* file = fopen("res/cube.obj", "r");
+	FILE* file = fopen("res/dragon.obj", "r");
 	if (file == NULL) {
 		printf("Impossible to open the file !\n");
 	}

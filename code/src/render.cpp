@@ -278,40 +278,46 @@ namespace Cube {
 in vec3 in_Position;\n\
 in vec3 in_Normal;\n\
 out vec4 vert_Normal;\n\
+out vec3 vert_wPos;\n\
 uniform mat4 objMat;\n\
 uniform mat4 mv_Mat;\n\
 uniform mat4 mvpMat;\n\
 void main() {\n\
 	gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
-	vert_Normal = mv_Mat * objMat * vec4(in_Normal, 0.0);\n\
+	vert_Normal = objMat * vec4(in_Normal, 0.0);\n\
+	//vert_wPos = objMat * vec4(in_Position, 1.0);\n\
 }";
-
-	//////////////// AMBIENT
-	/*
+	//////////////// AMBIENT + DIFFUSE
 	const char* cube_fragShader =
-	"#version 330\n\
+		"#version 330\n\
 	in vec4 vert_Normal;\n\
 	out vec4 out_Color;\n\
 	uniform mat4 mv_Mat;\n\
 	uniform vec4 color;\n\
+	uniform vec4 dir_light; \n\
 	uniform vec4 ambient; \n\
+	uniform vec4 diffuse; \n\
 	void main() {\n\
-		out_Color = color*ambient;\n\
+		vec4 ambientComp = color * ambient; \n\
+		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
+		out_Color = ambientComp + diffuseComp;\n\
+	}";
+	
+	//////////////// SPECULAR
+/*	const char* cube_fragShader =
+		"#version 330\n\
+	in vec4 vert_Normal;\n\
+	in vec3 vert_wPos;\n\
+	out vec4 out_Color;\n\
+	uniform mat4 mv_Mat;\n\
+	uniform vec4 color;\n\
+	uniform vec4 directional_light; \n\
+	uniform vec4 diffuse; \n\
+	uniform vec3 cameraPos;\n\
+	void main() {\n\
+		out_Color = ;\n\
 	}";
 	*/
-
-	//////////////// DIFFUSE
-	const char* cube_fragShader =
-		"#version 330\n\
-in vec4 vert_Normal;\n\
-out vec4 out_Color;\n\
-uniform mat4 mv_Mat;\n\
-uniform vec4 color;\n\
-uniform vec4 directional_light; \n\
-uniform vec4 diffuse; \n\
-void main() {\n\
-	out_Color = dot(vert_Normal, normalize(directional_light)) * diffuse * color;\n\
-}";
 
 	void setupCube() {
 		glGenVertexArrays(1, &cubeVao);
@@ -382,15 +388,16 @@ void main() {\n\
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-		glUniform4f(glGetUniformLocation(cubeProgram, "color"), 0.1f, 1.f, 1.f, 0.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), 1.0f, 1.0f, 1.0f, 1.0f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "directional_light"), -1.0f, 0.0f, 0.0, 1.0f);
+		
+		glUniform4f(glGetUniformLocation(cubeProgram, "color"), 0.2f, 1.f, 1.f, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "ambient"), 0.2f, 0.2f, 0.2f, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), 1.f, 1.f, 1.f, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), 1.0f, 0.f, 0.f, 1.f);
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-
+		
 		t = glm::translate(glm::mat4(), glm::vec3(1.0f, 2.0f, 3.0f));
 		objMat = t;
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glUniform4f(glGetUniformLocation(cubeProgram, "color"), sin(0.1f), 0.f, 0.f, 0.f);
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 
 		glUseProgram(0);
@@ -433,20 +440,22 @@ namespace Model
 		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
 		vert_Normal = mv_Mat * objMat * vec4(in_Normal, 0.0);\n\
 		}";
-	
+
 	//////////////// NO MATERIAL
+	/*
 	const char* model_fragShader =
 		"#version 330\n\
 		in vec4 vert_Normal;\n\
 		out vec4 out_Color;\n\
 		uniform mat4 mv_Mat;\n\
 		uniform vec4 color;\n\
+		uniform vec4 ambient;\n\
 		void main() {\n\
 			out_Color = color;\n\
 		}";
-
+		*/
 	//////////////// AMBIENT
-	/*const char* model_fragShader =
+	const char* model_fragShader =
 		"#version 330\n\
 		in vec4 vert_Normal;\n\
 		out vec4 out_Color;\n\
@@ -456,7 +465,7 @@ namespace Model
 		void main() {\n\
 			out_Color = color*ambient;\n\
 		}";
-	*/
+	
 	//////////////// DIFFUSE
 	/*const char* model_fragShader =
 		"#version 330\n\
@@ -512,7 +521,7 @@ namespace Model
 	void Render()
 	{
 		//glEnable(GL_PRIMITIVE_RESTART);
-		
+
 		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 0.0f));
 		objMat = t;
 
@@ -524,8 +533,8 @@ namespace Model
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
 		glUniform4f(glGetUniformLocation(modelProgram, "color"), 0.1f, 1.f, 1.f, 0.f);
-		//glUniform4f(glGetUniformLocation(modelProgram, "ambient"), 0.5f, 0.5f, 0.5f, 0.5f);
-		glDrawElements(GL_TRIANGLE_STRIP, vertices.size(), GL_UNSIGNED_BYTE, 0);
+		glUniform4f(glGetUniformLocation(modelProgram, "ambient"), 0.5f, 0.5f, 0.5f, 0.5f);
+		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 		
 		glUseProgram(0);
 		glBindVertexArray(0);
@@ -539,7 +548,6 @@ GLuint VAO;		// VAO (Vertex Array Object)
 				// OpenGL pipeline.
 
 GLuint VBO;		// VBF (Vertex Buffer Object)
-GLuint unifLocation;
 
 const float fVertices[]
 {
@@ -601,9 +609,10 @@ void GLinit(int width, int height) {
 	Axis::setupAxis();
 	Cube::setupCube();
 
-	ReadFile(Model::vertices, Model::uvs, Model::normals); // READ MODEL
-	bool res = loadOBJ("res/cube.obj", Model::vertices, Model::uvs, Model::normals); // LOAD MODEL
-	// DRAW
+	// Read & Load model
+	ReadFile(Model::vertices, Model::uvs, Model::normals);
+	bool res = loadOBJ("res/cube.obj", Model::vertices, Model::uvs, Model::normals);
+	// Init model
 	Model::Init();
 
 	/////////////////////////////////////////////////////
@@ -631,7 +640,8 @@ void GLrender(float dt) {
 	RV::_MVP = RV::_projection * RV::_modelView;
 
 	Axis::drawAxis();
-	
+	Cube::drawTwoCubes();
+
 	/////////////////////////////////////////////////////TODO
 	Model::Render();
 	/////////////////////////////////////////////////////////
@@ -642,15 +652,8 @@ void GLrender(float dt) {
 void GUI() {
 	bool show = true;
 	ImGui::Begin("Physics Parameters", &show, 0);
-
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
-		/////////////////////////////////////////////////////TODO
-		// Do your GUI code here....
-		// ...
-		// ...
-		// ...
 		/////////////////////////////////////////////////////////
 	}
 	// .........................

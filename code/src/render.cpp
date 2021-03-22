@@ -297,7 +297,6 @@ uniform mat4 mvpMat;\n\
 void main() {\n\
 	gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
 	vert_Normal = objMat * vec4(in_Normal, 0.0);\n\
-	//vert_wPos = objMat * vec4(in_Position, 1.0);\n\
 }";
 	//////////////// AMBIENT + DIFFUSE
 	/*
@@ -320,34 +319,24 @@ void main() {\n\
 	const char* cube_fragShader =
 		"#version 330\n\
 	in vec4 vert_Normal;\n\
+	in vec3 vert_wPos;\n\
 	out vec4 out_Color;\n\
 	uniform mat4 mv_Mat;\n\
 	uniform vec4 color;\n\
 	uniform vec4 dir_light; \n\
 	uniform vec4 ambient; \n\
 	uniform vec4 diffuse; \n\
+	uniform vec4 viewPos; \n\
+	uniform vec4 specular; \n\
 	void main() {\n\
 		vec4 ambientComp = color * ambient; \n\
 		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
-		out_Color = ambientComp + diffuseComp;\n\
+		vec4 viewDir = normalize(viewPos - vert_wPos);\n\
+		vec4 reflectDir = reflect(-dir_light, vert_Normal);\n\
+		vec4 specularComp = pow(max(dot(viewDir, reflectDir),0.0), 255) * specular * color ;\n\
+		out_Color = ambientComp + diffuseComp + specularComp;\n\
 	}";
 	
-	//////////////// SPECULAR
-/*	const char* cube_fragShader =
-		"#version 330\n\
-	in vec4 vert_Normal;\n\
-	in vec3 vert_wPos;\n\
-	out vec4 out_Color;\n\
-	uniform mat4 mv_Mat;\n\
-	uniform vec4 color;\n\
-	uniform vec4 directional_light; \n\
-	uniform vec4 diffuse; \n\
-	uniform vec3 cameraPos;\n\
-	void main() {\n\
-		out_Color = ;\n\
-	}";
-	*/
-
 	void setupCube() {
 		glGenVertexArrays(1, &cubeVao);
 		glBindVertexArray(cubeVao);
@@ -421,6 +410,8 @@ void main() {\n\
 		glUniform4f(glGetUniformLocation(cubeProgram, "color"), wLight.r, wLight.g, wLight.b, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "wPos"), wLight.specular, wLight.specular, wLight.specular, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), wLight.lX, wLight.lX, wLight.lX, 1.f);
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 		
@@ -684,7 +675,7 @@ void GUI() {
 		
 		ImGui::SliderFloat("Ambient", &wLight.ambient, 0.0f, 1.0f);
 		ImGui::SliderFloat("Diffuse", &wLight.diffuse, 0.0f, 1.0f);
-		//ImGui::SliderFloat("Specular", &wLight.diffuse, 0.0f, 1.0f);
+		ImGui::SliderFloat("Specular", &wLight.specular, 0.0f, 1.0f);
 		
 		ImGui::SliderFloat("Light X", &wLight.lX, -1.f, 1.0f);
 		ImGui::SliderFloat("Light Y", &wLight.lY, -1.f, 1.0f);

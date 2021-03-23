@@ -223,10 +223,14 @@ struct WLight
 	float ambient, diffuse, specular;
 	float lX, lY, lZ;
 
+	int shininess = 32;
+
 	WLight(float _r, float _g, float _b, float _ambient, float _diffuse, float _specular, float _lX, float _lY, float _lZ)
 		: r(_r), g(_g), b(_b), ambient(_ambient), diffuse(_diffuse), specular(_specular), lX(_lX), lY(_lY), lZ(_lZ) {};
 };
 WLight wLight(0.5f, 0.f, 0.f, 0.5f, 1.f, 0.5f, 1.f, 0.f, 0.f);
+
+glm::vec4 wPos;
 
 ////////////////////////////////////////////////// CUBE
 namespace Cube {
@@ -316,12 +320,13 @@ void main() {\n\
 	uniform vec4 diffuse; \n\
 	uniform vec4 viewPos; \n\
 	uniform vec4 specular; \n\
+	int shininess;\n\
 	void main() {\n\
 		vec4 ambientComp = color * ambient; \n\
 		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
 		vec4 viewDir = normalize(viewPos - vert_Normal);\n\
-		vec4 reflectDir = reflect(-dir_light, vert_Normal);\n\
-		vec4 specularComp = pow(max(dot(viewDir, reflectDir),0.0), 255) * specular * color ;\n\
+		vec4 reflectDir = reflect(-dir_light, normalize(viewPos));\n\
+		vec4 specularComp = pow(max(dot(viewDir, reflectDir),0.0), 32) * specular * color ;\n\
 		out_Color = ambientComp + diffuseComp + specularComp;\n\
 	}";
 	
@@ -400,7 +405,7 @@ void main() {\n\
 		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
 		
-		//glUniform4f(glGetUniformLocation(cubeProgram, "viewPos"), RV::_cameraPoint.x, RV::_cameraPoint.y, RV::_cameraPoint.z, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), wLight.lX, wLight.lX, wLight.lX, 1.f);
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 		
@@ -520,6 +525,7 @@ namespace Model
 
 		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 0.0f));
 		objMat = t;
+		objMat = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
 
 		glBindVertexArray(modelVao);
 		glUseProgram(modelProgram);
@@ -558,7 +564,7 @@ extern bool loadOBJ(const char*
 
 extern void ReadFile(std::vector < glm::vec3 >& out_vertices,
 	std::vector < glm::vec2 >& out_uvs,
-	std::vector < glm::vec3 >& out_normals);
+	std::vector < glm::vec3 >& out_normals, std::string path);
 
 // A vertex shader that assigns a static position to the vertex
 static const GLchar* vertex_shader_source[] = {
@@ -594,10 +600,11 @@ void GLinit(int width, int height) {
 	// Setup shaders & geometry
 	Axis::setupAxis();
 	Cube::setupCube();
-
+	
 	// Read & Load model
-	ReadFile(Model::vertices, Model::uvs, Model::normals);
+	ReadFile(Model::vertices, Model::uvs, Model::normals, "res/dragon.obj");
 	bool res = loadOBJ("res/dragon.obj", Model::vertices, Model::uvs, Model::normals);
+	
 	// Init model
 	Model::Init();
 
@@ -624,6 +631,10 @@ void GLrender(float dt) {
 	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[0], glm::vec3(0.f, 1.f, 0.f));
 
 	RV::_MVP = RV::_projection * RV::_modelView;
+
+	wPos = glm::vec4(0,0,0,1);
+	glm::mat4 view_inv = glm::inverse(RV::_modelView);
+	wPos = view_inv * wPos;
 
 	Axis::drawAxis();
 	Cube::drawTwoCubes();

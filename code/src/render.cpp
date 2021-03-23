@@ -211,6 +211,12 @@ void main() {\n\
 	}
 }
 
+struct Object
+{
+	float x, y, z;
+	float r, g, b;
+};
+
 struct WLight
 {
 	float r, g, b;
@@ -297,29 +303,11 @@ uniform mat4 mvpMat;\n\
 void main() {\n\
 	gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
 	vert_Normal = objMat * vec4(in_Normal, 0.0);\n\
-}";
-	//////////////// AMBIENT + DIFFUSE
-	/*
+}"; 
+
 	const char* cube_fragShader =
 		"#version 330\n\
 	in vec4 vert_Normal;\n\
-	out vec4 out_Color;\n\
-	uniform mat4 mv_Mat;\n\
-	uniform vec4 color;\n\
-	uniform vec4 dir_light; \n\
-	uniform vec4 ambient; \n\
-	uniform vec4 diffuse; \n\
-	void main() {\n\
-		vec4 ambientComp = color * ambient; \n\
-		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
-		out_Color = ambientComp + diffuseComp;\n\
-	}";
-	*/
-	//////////////// AMBIENT + DIFFUSE + SPECULAR
-	const char* cube_fragShader =
-		"#version 330\n\
-	in vec4 vert_Normal;\n\
-	in vec3 vert_wPos;\n\
 	out vec4 out_Color;\n\
 	uniform mat4 mv_Mat;\n\
 	uniform vec4 color;\n\
@@ -331,7 +319,7 @@ void main() {\n\
 	void main() {\n\
 		vec4 ambientComp = color * ambient; \n\
 		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
-		vec4 viewDir = normalize(viewPos - vert_wPos);\n\
+		vec4 viewDir = normalize(viewPos - vert_Normal);\n\
 		vec4 reflectDir = reflect(-dir_light, vert_Normal);\n\
 		vec4 specularComp = pow(max(dot(viewDir, reflectDir),0.0), 255) * specular * color ;\n\
 		out_Color = ambientComp + diffuseComp + specularComp;\n\
@@ -411,7 +399,8 @@ void main() {\n\
 		glUniform4f(glGetUniformLocation(cubeProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "wPos"), wLight.specular, wLight.specular, wLight.specular, 1.f);
+		
+		//glUniform4f(glGetUniformLocation(cubeProgram, "viewPos"), RV::_cameraPoint.x, RV::_cameraPoint.y, RV::_cameraPoint.z, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), wLight.lX, wLight.lX, wLight.lX, 1.f);
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 		
@@ -461,19 +450,6 @@ namespace Model
 		vert_Normal = objMat * vec4(in_Normal, 0.0);\n\
 		}";
 
-	//////////////// NO MATERIAL
-	/*
-	const char* model_fragShader =
-		"#version 330\n\
-		in vec4 vert_Normal;\n\
-		out vec4 out_Color;\n\
-		uniform mat4 mv_Mat;\n\
-		uniform vec4 color;\n\
-		uniform vec4 ambient;\n\
-		void main() {\n\
-			out_Color = color;\n\
-		}";
-		*/
 	//////////////// AMBIENT + DIFFUSE
 	const char* model_fragShader =
 		"#version 330\n\
@@ -489,20 +465,6 @@ namespace Model
 		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
 		out_Color = ambientComp + diffuseComp;\n\
 	}";
-	
-	//////////////// DIFFUSE
-	/*const char* model_fragShader =
-		"#version 330\n\
-		in vec4 vert_Normal;\n\
-		out vec4 out_Color;\n\
-		uniform mat4 mv_Mat;\n\
-		uniform vec4 color;\n\
-		uniform vec4 directional_light; \n\
-		uniform vec4 diffuse; \n\
-		void main() {\n\
-		out_Color = dot(vert_Normal, normalize(directional_light)) * diffuse * color;\n\
-		}";
-		*/
 
 	void Init() {
 		glGenVertexArrays(1, &modelVao);
@@ -542,6 +504,16 @@ namespace Model
 		glBindAttribLocation(modelProgram, 1, "in_Normal");
 		linkProgram(modelProgram);
 	}
+
+	void Clean() {
+		glDeleteBuffers(3, modelVbo);
+		glDeleteVertexArrays(1, &modelVao);
+
+		glDeleteProgram(modelProgram);
+		glDeleteShader(modelShaders[0]);
+		glDeleteShader(modelShaders[1]);
+	}
+
 	void Render()
 	{
 		//glEnable(GL_PRIMITIVE_RESTART);
@@ -680,8 +652,8 @@ void GUI() {
 		ImGui::SliderFloat("Light X", &wLight.lX, -1.f, 1.0f);
 		ImGui::SliderFloat("Light Y", &wLight.lY, -1.f, 1.0f);
 		ImGui::SliderFloat("Light Z", &wLight.lZ, -1.f, 1.0f);
-		//ImGui::SliderFloat("Specular", &f, 0.0f, 1.0f);
 		/////////////////////////////////////////////////////////
+		ImGui::ShowTestWindow();
 	}
 	// .........................
 

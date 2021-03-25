@@ -219,18 +219,31 @@ struct Object
 
 struct WLight
 {
-	float r, g, b;
+	float rgb[3];
 	float ambient, diffuse, specular;
-	float lX, lY, lZ;
+	float lightPos[3];
 
-	int shininess = 32;
+	int shininess;
 
-	WLight(float _r, float _g, float _b, float _ambient, float _diffuse, float _specular, float _lX, float _lY, float _lZ)
-		: r(_r), g(_g), b(_b), ambient(_ambient), diffuse(_diffuse), specular(_specular), lX(_lX), lY(_lY), lZ(_lZ) {};
+	WLight()
+	{
+		rgb[0] = 0.5f;	// R
+		rgb[1] = 1.f;	// G
+		rgb[2] = 1.f;	// B
+
+		float ambient = 0.5f;
+		float diffuse = 1.f;
+		float specular = 0.5f;
+
+		lightPos[0] = 1.f;
+		lightPos[1] = 0.f;
+		lightPos[2] = 0.f;
+
+		shininess = 32;
+	};
 };
-WLight wLight(0.5f, 0.f, 0.f, 0.5f, 1.f, 0.5f, 1.f, 0.f, 0.f);
-
 glm::vec4 wPos;
+WLight wLight;
 
 ////////////////////////////////////////////////// CUBE
 namespace Cube {
@@ -320,7 +333,6 @@ void main() {\n\
 	uniform vec4 diffuse; \n\
 	uniform vec4 viewPos; \n\
 	uniform vec4 specular; \n\
-	int shininess;\n\
 	void main() {\n\
 		vec4 ambientComp = color * ambient; \n\
 		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
@@ -400,18 +412,175 @@ void main() {\n\
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 		
-		glUniform4f(glGetUniformLocation(cubeProgram, "color"), wLight.r, wLight.g, wLight.b, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "color"), wLight.rgb[0], wLight.rgb[1], wLight.rgb[2], 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
 		
 		glUniform4f(glGetUniformLocation(cubeProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), wLight.lX, wLight.lX, wLight.lX, 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 		
 		t = glm::translate(glm::mat4(), glm::vec3(1.0f, 2.0f, 3.0f));
 		objMat = t;
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
+
+		glUseProgram(0);
+		glBindVertexArray(0);
+
+		glDisable(GL_PRIMITIVE_RESTART);
+	}
+}
+
+////////////////////////////////////////////////// LIGHT CUBE
+namespace LightCube {
+	GLuint cubeVao;
+	GLuint cubeVbo[3];
+	GLuint cubeShaders[2];
+	GLuint cubeProgram;
+	glm::mat4 objMat = glm::mat4(1.f);
+
+	extern const float halfW = 0.5f;
+	int numVerts = 24 + 6; // 4 vertex/face * 6 faces + 6 PRIMITIVE RESTART
+
+						   //   4---------7
+						   //  /|        /|
+						   // / |       / |
+						   //5---------6  |
+						   //|  0------|--3
+						   //| /       | /
+						   //|/        |/
+						   //1---------2
+	glm::vec3 verts[] = {
+		glm::vec3(-halfW, -halfW, -halfW),
+		glm::vec3(-halfW, -halfW,  halfW),
+		glm::vec3(halfW, -halfW,  halfW),
+		glm::vec3(halfW, -halfW, -halfW),
+		glm::vec3(-halfW,  halfW, -halfW),
+		glm::vec3(-halfW,  halfW,  halfW),
+		glm::vec3(halfW,  halfW,  halfW),
+		glm::vec3(halfW,  halfW, -halfW)
+	};
+	glm::vec3 norms[] = {
+		glm::vec3(0.f, -1.f,  0.f),
+		glm::vec3(0.f,  1.f,  0.f),
+		glm::vec3(-1.f,  0.f,  0.f),
+		glm::vec3(1.f,  0.f,  0.f),
+		glm::vec3(0.f,  0.f, -1.f),
+		glm::vec3(0.f,  0.f,  1.f)
+	};
+
+	glm::vec3 cubeVerts[] = {
+		verts[1], verts[0], verts[2], verts[3],
+		verts[5], verts[6], verts[4], verts[7],
+		verts[1], verts[5], verts[0], verts[4],
+		verts[2], verts[3], verts[6], verts[7],
+		verts[0], verts[4], verts[3], verts[7],
+		verts[1], verts[2], verts[5], verts[6]
+	};
+	glm::vec3 cubeNorms[] = {
+		norms[0], norms[0], norms[0], norms[0],
+		norms[1], norms[1], norms[1], norms[1],
+		norms[2], norms[2], norms[2], norms[2],
+		norms[3], norms[3], norms[3], norms[3],
+		norms[4], norms[4], norms[4], norms[4],
+		norms[5], norms[5], norms[5], norms[5]
+	};
+	GLubyte cubeIdx[] = {
+		0, 1, 2, 3, UCHAR_MAX,
+		4, 5, 6, 7, UCHAR_MAX,
+		8, 9, 10, 11, UCHAR_MAX,
+		12, 13, 14, 15, UCHAR_MAX,
+		16, 17, 18, 19, UCHAR_MAX,
+		20, 21, 22, 23, UCHAR_MAX
+	};
+
+	const char* cube_vertShader =
+		"#version 330\n\
+	in vec3 in_Position;\n\
+	in vec3 in_Normal;\n\
+	out vec4 vert_Normal;\n\
+	out vec3 vert_wPos;\n\
+	uniform mat4 objMat;\n\
+	uniform mat4 mv_Mat;\n\
+	uniform mat4 mvpMat;\n\
+	void main() {\n\
+		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
+		vert_Normal = objMat * vec4(in_Normal, 0.0);\n\
+	}";
+
+	const char* cube_fragShader =
+		"#version 330\n\
+	in vec4 vert_Normal;\n\
+	out vec4 out_Color;\n\
+	uniform mat4 mv_Mat;\n\
+	uniform vec4 objColor;\n\
+	uniform vec4 lightColor;\n\
+	void main() {\n\
+		out_Color = objColor * lightColor;\n\
+	}";
+
+	void setupCube() {
+		glGenVertexArrays(1, &cubeVao);
+		glBindVertexArray(cubeVao);
+		glGenBuffers(3, cubeVbo);
+
+		glBindBuffer(GL_ARRAY_BUFFER, cubeVbo[0]);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVerts), cubeVerts, GL_STATIC_DRAW);
+		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(0);
+
+		glBindBuffer(GL_ARRAY_BUFFER, cubeVbo[1]);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(cubeNorms), cubeNorms, GL_STATIC_DRAW);
+		glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(1);
+
+		glPrimitiveRestartIndex(UCHAR_MAX);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubeVbo[2]);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cubeIdx), cubeIdx, GL_STATIC_DRAW);
+
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+		cubeShaders[0] = compileShader(cube_vertShader, GL_VERTEX_SHADER, "cubeVert");
+		cubeShaders[1] = compileShader(cube_fragShader, GL_FRAGMENT_SHADER, "cubeFrag");
+
+		cubeProgram = glCreateProgram();
+		glAttachShader(cubeProgram, cubeShaders[0]);
+		glAttachShader(cubeProgram, cubeShaders[1]);
+		glBindAttribLocation(cubeProgram, 0, "in_Position");
+		glBindAttribLocation(cubeProgram, 1, "in_Normal");
+		linkProgram(cubeProgram);
+	}
+	void cleanupCube() {
+		glDeleteBuffers(3, cubeVbo);
+		glDeleteVertexArrays(1, &cubeVao);
+
+		glDeleteProgram(cubeProgram);
+		glDeleteShader(cubeShaders[0]);
+		glDeleteShader(cubeShaders[1]);
+	}
+	void updateCube(const glm::mat4& transform) {
+		objMat = transform;
+	}
+
+	void LightCube()
+	{
+		glEnable(GL_PRIMITIVE_RESTART);
+		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2]));
+		objMat = t;
+
+		glBindVertexArray(cubeVao);
+		glUseProgram(cubeProgram);
+		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+
+		glUniform4f(glGetUniformLocation(cubeProgram, "lightColor"), wLight.rgb[0], wLight.rgb[1], wLight.rgb[2], 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "objColor"), 1.f, 1.f, 1.f, 1.f);
+
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 
 		glUseProgram(0);
@@ -472,6 +641,7 @@ namespace Model
 	}";
 
 	void Init() {
+
 		glGenVertexArrays(1, &modelVao);
 		glBindVertexArray(modelVao);
 		glGenBuffers(3, modelVbo);
@@ -534,10 +704,13 @@ namespace Model
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
-		glUniform4f(glGetUniformLocation(modelProgram, "color"), wLight.r, wLight.g, wLight.b, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "color"), wLight.rgb[0], wLight.rgb[1], wLight.rgb[2], 1.f);
 		glUniform4f(glGetUniformLocation(modelProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
 		glUniform4f(glGetUniformLocation(modelProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "dir_light"), wLight.lX, wLight.lY, wLight.lZ, 1.f);
+		//glUniform4f(glGetUniformLocation(modelProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
+
+		//glUniform4f(glGetUniformLocation(modelProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 		
 		glUseProgram(0);
@@ -600,7 +773,8 @@ void GLinit(int width, int height) {
 	// Setup shaders & geometry
 	Axis::setupAxis();
 	Cube::setupCube();
-	
+	LightCube::setupCube();
+
 	// Read & Load model
 	ReadFile(Model::vertices, Model::uvs, Model::normals, "res/dragon.obj");
 	bool res = loadOBJ("res/dragon.obj", Model::vertices, Model::uvs, Model::normals);
@@ -632,13 +806,14 @@ void GLrender(float dt) {
 
 	RV::_MVP = RV::_projection * RV::_modelView;
 
-	wPos = glm::vec4(0,0,0,1);
+	wPos = glm::vec4(0.f,0.f,0.f,1.f);
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
 
 	Axis::drawAxis();
 	Cube::drawTwoCubes();
-
+	LightCube::LightCube();
+	
 	/////////////////////////////////////////////////////TODO
 	Model::Render();
 	/////////////////////////////////////////////////////////
@@ -652,17 +827,16 @@ void GUI() {
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		/////////////////////////////////////////////////////////
-		ImGui::SliderFloat("R", &wLight.r, 0.0f, 1.0f);
-		ImGui::SliderFloat("G", &wLight.g, 0.0f, 1.0f);
-		ImGui::SliderFloat("B", &wLight.b, 0.0f, 1.0f);
-		
-		ImGui::SliderFloat("Ambient", &wLight.ambient, 0.0f, 1.0f);
-		ImGui::SliderFloat("Diffuse", &wLight.diffuse, 0.0f, 1.0f);
-		ImGui::SliderFloat("Specular", &wLight.specular, 0.0f, 1.0f);
-		
-		ImGui::SliderFloat("Light X", &wLight.lX, -1.f, 1.0f);
-		ImGui::SliderFloat("Light Y", &wLight.lY, -1.f, 1.0f);
-		ImGui::SliderFloat("Light Z", &wLight.lZ, -1.f, 1.0f);
+		if (ImGui::CollapsingHeader("Phong Shading"))
+		{
+			ImGui::DragFloat3("Position", wLight.lightPos);
+			ImGui::SliderFloat3("RGB", wLight.rgb, 0.f, 1.f);
+
+			ImGui::SliderFloat("Ambient", &wLight.ambient, 0.0f, 1.0f);
+			ImGui::SliderFloat("Diffuse", &wLight.diffuse, 0.0f, 1.0f);
+			ImGui::SliderFloat("Specular", &wLight.specular, 0.0f, 1.0f);	
+		}
+
 		/////////////////////////////////////////////////////////
 		ImGui::ShowTestWindow();
 	}

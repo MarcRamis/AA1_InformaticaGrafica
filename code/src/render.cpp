@@ -18,6 +18,72 @@
 #include <glm\gtc\type_ptr.hpp>
 #include <glm\gtc\matrix_transform.hpp>
 
+#include <iostream>
+#include <glm/gtx/string_cast.hpp>
+
+extern bool loadOBJ(const char*
+	path,
+	std::vector < glm::vec3 >&
+	out_vertices,
+	std::vector < glm::vec2 >& out_uvs,
+	std::vector < glm::vec3 >&
+	out_normals
+);
+
+extern void ReadFile(std::vector < glm::vec3 >& out_vertices,
+	std::vector < glm::vec2 >& out_uvs,
+	std::vector < glm::vec3 >& out_normals, std::string path);
+
+struct Object
+{
+	float pos[3];
+	float rgb[3];
+
+	Object(float posX, float posY, float posZ, float r, float g, float b)
+	{
+		pos[0] = posX;
+		pos[1] = posY;
+		pos[2] = posZ;
+		
+		rgb[0] = r;
+		rgb[1] = g;
+		rgb[2] = b;
+	}
+};
+
+struct WLight
+{
+	float rgb[3];
+	float ambient, diffuse, specular;
+	float lightPos[3];
+	float specular_color[3];
+
+	float shininess;
+
+	WLight()
+	{
+		rgb[0] = 1.0f;	// R
+		rgb[1] = 1.f;	// G
+		rgb[2] = 1.f;	// B
+
+		ambient = 0.2f;
+		diffuse = 0.6f;
+		specular = 0.5f;
+
+		lightPos[0] = 11.f;
+		lightPos[1] = 11.f;
+		lightPos[2] = 0.f;
+
+		shininess = 2.f;
+	};
+};
+glm::vec4 wPos;
+WLight wLight;
+Object dragon(0.f,0.f,0.f,0.4f,1.f,1.f);
+Object scenario(0.f,0.f,0.f,0.5f,.5,0.5f);
+
+float radians = 65.f;
+
 ///////// fw decl
 namespace ImGui {
 	void Render();
@@ -30,7 +96,7 @@ namespace Axis {
 ////////////////
 
 namespace RenderVars {
-	const float FOV = glm::radians(65.f);
+	const float FOV = glm::radians(radians);
 	const float zNear = 1.f;
 	const float zFar = 50.f;
 
@@ -211,40 +277,6 @@ void main() {\n\
 	}
 }
 
-struct Object
-{
-	float x, y, z;
-	float r, g, b;
-};
-
-struct WLight
-{
-	float rgb[3];
-	float ambient, diffuse, specular;
-	float lightPos[3];
-
-	int shininess;
-
-	WLight()
-	{
-		rgb[0] = 0.5f;	// R
-		rgb[1] = 1.f;	// G
-		rgb[2] = 1.f;	// B
-
-		float ambient = 0.5f;
-		float diffuse = 1.f;
-		float specular = 0.5f;
-
-		lightPos[0] = 1.f;
-		lightPos[1] = 0.f;
-		lightPos[2] = 0.f;
-
-		shininess = 32;
-	};
-};
-glm::vec4 wPos;
-WLight wLight;
-
 ////////////////////////////////////////////////// CUBE
 namespace Cube {
 	GLuint cubeVao;
@@ -310,36 +342,42 @@ namespace Cube {
 
 	const char* cube_vertShader =
 		"#version 330\n\
-in vec3 in_Position;\n\
-in vec3 in_Normal;\n\
-out vec4 vert_Normal;\n\
-out vec3 vert_wPos;\n\
-uniform mat4 objMat;\n\
-uniform mat4 mv_Mat;\n\
-uniform mat4 mvpMat;\n\
-void main() {\n\
-	gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
-	vert_Normal = objMat * vec4(in_Normal, 0.0);\n\
-}"; 
+	in vec3 in_Position;\n\
+	in vec3 in_Normal;\n\
+	out vec4 vert_Normal;\n\
+	out vec4 fragPos;\n\
+	mat4 normalMat;\n\
+	uniform mat4 objMat;\n\
+	uniform mat4 mv_Mat;\n\
+	uniform mat4 mvpMat;\n\
+	void main() {\n\
+		normalMat = transpose(inverse(objMat));\n\
+		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
+		vert_Normal = normalMat * vec4(in_Normal, 0.0);\n\
+		fragPos = vec4(objMat * vec4(in_Position, 1.0));\n\
+	}";
 
 	const char* cube_fragShader =
 		"#version 330\n\
 	in vec4 vert_Normal;\n\
+	in vec4 fragPos;\n\
 	out vec4 out_Color;\n\
-	uniform mat4 mv_Mat;\n\
-	uniform vec4 color;\n\
+	uniform vec4 objColor;\n\
+	uniform vec4 lightColor;\n\
 	uniform vec4 dir_light; \n\
 	uniform vec4 ambient; \n\
 	uniform vec4 diffuse; \n\
-	uniform vec4 viewPos; \n\
 	uniform vec4 specular; \n\
+	uniform vec4 specular_color; \n\
+	uniform vec4 viewPos; \n\
+	uniform float shininess;\n\
 	void main() {\n\
-		vec4 ambientComp = color * ambient; \n\
-		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
-		vec4 viewDir = normalize(viewPos - vert_Normal);\n\
-		vec4 reflectDir = reflect(-dir_light, normalize(viewPos));\n\
-		vec4 specularComp = pow(max(dot(viewDir, reflectDir),0.0), 32) * specular * color ;\n\
-		out_Color = ambientComp + diffuseComp + specularComp;\n\
+		vec4 ambientComp = lightColor * ambient; \n\
+		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * lightColor; \n\
+		vec4 viewDir = viewPos - fragPos;\n\
+		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
+		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
+		out_Color = objColor * (ambientComp + diffuseComp + specularComp);\n\
 	}";
 	
 	void setupCube() {
@@ -386,43 +424,52 @@ void main() {\n\
 	void updateCube(const glm::mat4& transform) {
 		objMat = transform;
 	}
-	void drawCube() {
+	void DrawScenario() {
 		glEnable(GL_PRIMITIVE_RESTART);
-		glBindVertexArray(cubeVao);
-		glUseProgram(cubeProgram);
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-		glUniform4f(glGetUniformLocation(cubeProgram, "color"), 0.1f, 1.f, 1.f, 0.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "ambient"), 0.5f, 0.5f, 0.5f, 0.5f);
-		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-
-		glUseProgram(0);
-		glBindVertexArray(0);
-		glDisable(GL_PRIMITIVE_RESTART);
-	}
-	void drawTwoCubes() {
-		glEnable(GL_PRIMITIVE_RESTART);
-		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(-1.0f, 2.0f, 3.0f));
-		objMat = t;
+		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(0.0f, -0.6f, 0.0f));
+		glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(10.0f, 1.0f, 20.0f));
+		objMat = t * s;
 
 		glBindVertexArray(cubeVao);
 		glUseProgram(cubeProgram);
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-		
-		glUniform4f(glGetUniformLocation(cubeProgram, "color"), wLight.rgb[0], wLight.rgb[1], wLight.rgb[2], 1.f);
+
+		glUniform4f(glGetUniformLocation(cubeProgram, "objColor"), scenario.rgb[0], scenario.rgb[1], scenario.rgb[2], 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "lightColor"), wLight.rgb[0], wLight.rgb[1], wLight.rgb[2], 1.f);
+
 		glUniform4f(glGetUniformLocation(cubeProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
-		
+		glUniform4f(glGetUniformLocation(cubeProgram, "specular_color"), 1.f, 0.f, 0.f, 1.f);
+
 		glUniform4f(glGetUniformLocation(cubeProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
+		glUniform1f(glGetUniformLocation(cubeProgram, "shininess"), wLight.shininess);
+
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-		
-		t = glm::translate(glm::mat4(), glm::vec3(1.0f, 2.0f, 3.0f));
-		objMat = t;
+
+		t = glm::translate(glm::mat4(), glm::vec3(3.0f, 5.0f, 3.0f));
+		objMat = t ;
+		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
+
+		t = glm::translate(glm::mat4(), glm::vec3(3.0f, 5.0f, 8.0f));
+		s = glm::scale(glm::mat4(), glm::vec3(1.0f, 10.0f, 1.0f));
+		objMat = t * s;
+		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
+
+		t = glm::translate(glm::mat4(), glm::vec3(4.0f, 2.0f, 8.0f));
+		s = glm::scale(glm::mat4(), glm::vec3(1.0f, 6.0f, 1.0f));
+		objMat = t * s;
+		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
+
+		t = glm::translate(glm::mat4(), glm::vec3(4.0f, 2.0f, 7.0f));
+		s = glm::scale(glm::mat4(), glm::vec3(1.0f, 6.0f, 1.0f));
+		objMat = t * s;
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 
@@ -432,7 +479,6 @@ void main() {\n\
 		glDisable(GL_PRIMITIVE_RESTART);
 	}
 }
-
 ////////////////////////////////////////////////// LIGHT CUBE
 namespace LightCube {
 	GLuint cubeVao;
@@ -613,31 +659,42 @@ namespace Model
 
 	const char* model_vertShader =
 		"#version 330\n\
-		in vec3 in_Position;\n\
-		in vec3 in_Normal;\n\
-		out vec4 vert_Normal;\n\
-		uniform mat4 objMat;\n\
-		uniform mat4 mv_Mat;\n\
-		uniform mat4 mvpMat;\n\
-		void main() {\n\
+	in vec3 in_Position;\n\
+	in vec3 in_Normal;\n\
+	out vec4 vert_Normal;\n\
+	out vec4 fragPos;\n\
+	mat4 normalMat;\n\
+	uniform mat4 objMat;\n\
+	uniform mat4 mv_Mat;\n\
+	uniform mat4 mvpMat;\n\
+	void main() {\n\
+		normalMat = transpose(inverse(objMat));\n\
 		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
-		vert_Normal = objMat * vec4(in_Normal, 0.0);\n\
-		}";
+		vert_Normal = normalMat * vec4(in_Normal, 0.0);\n\
+		fragPos = vec4(objMat * vec4(in_Position, 1.0));\n\
+	}";
 
-	//////////////// AMBIENT + DIFFUSE
 	const char* model_fragShader =
 		"#version 330\n\
 	in vec4 vert_Normal;\n\
+	in vec4 fragPos;\n\
 	out vec4 out_Color;\n\
-	uniform mat4 mv_Mat;\n\
-	uniform vec4 color;\n\
+	uniform vec4 objColor;\n\
+	uniform vec4 lightColor;\n\
 	uniform vec4 dir_light; \n\
 	uniform vec4 ambient; \n\
 	uniform vec4 diffuse; \n\
+	uniform vec4 specular; \n\
+	uniform vec4 specular_color; \n\
+	uniform vec4 viewPos; \n\
+	uniform float shininess;\n\
 	void main() {\n\
-		vec4 ambientComp = color * ambient; \n\
-		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * color; \n\
-		out_Color = ambientComp + diffuseComp;\n\
+		vec4 ambientComp = lightColor * ambient; \n\
+		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * lightColor; \n\
+		vec4 viewDir = viewPos - fragPos;\n\
+		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
+		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
+		out_Color = objColor * (ambientComp + diffuseComp + specularComp);\n\
 	}";
 
 	void Init() {
@@ -691,12 +748,10 @@ namespace Model
 
 	void Render()
 	{
-		//glEnable(GL_PRIMITIVE_RESTART);
-
-		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, 0.0f));
-		objMat = t;
-		objMat = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
-
+		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(dragon.pos[0], dragon.pos[1], dragon.pos[2]));
+		glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
+		objMat = t * s;
+		
 		glBindVertexArray(modelVao);
 		glUseProgram(modelProgram);
 
@@ -704,61 +759,24 @@ namespace Model
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
-		glUniform4f(glGetUniformLocation(modelProgram, "color"), wLight.rgb[0], wLight.rgb[1], wLight.rgb[2], 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "objColor"), dragon.rgb[0], dragon.rgb[1], dragon.rgb[2], 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "lightColor"), wLight.rgb[0], wLight.rgb[1], wLight.rgb[2], 1.f);
+
 		glUniform4f(glGetUniformLocation(modelProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
 		glUniform4f(glGetUniformLocation(modelProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
-		//glUniform4f(glGetUniformLocation(modelProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "specular_color"), 1.f, 0.f, 0.f, 1.f);
 
-		//glUniform4f(glGetUniformLocation(modelProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
 		glUniform4f(glGetUniformLocation(modelProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
+		glUniform1f(glGetUniformLocation(modelProgram, "shininess"), wLight.shininess);
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 		
 		glUseProgram(0);
 		glBindVertexArray(0);
-		//glDisable(GL_PRIMITIVE_RESTART);
 	}
 }
 /////////////////////////////////////////////////
-GLuint program;
-GLuint VAO;		// VAO (Vertex Array Object)
-				// Maintains all of the state related to input of the
-				// OpenGL pipeline.
-
-GLuint VBO;		// VBF (Vertex Buffer Object)
-
-extern bool loadOBJ(const char*
-	path,
-	std::vector < glm::vec3 >&
-	out_vertices,
-	std::vector < glm::vec2 >& out_uvs,
-	std::vector < glm::vec3 >&
-	out_normals
-);
-
-extern void ReadFile(std::vector < glm::vec3 >& out_vertices,
-	std::vector < glm::vec2 >& out_uvs,
-	std::vector < glm::vec3 >& out_normals, std::string path);
-
-// A vertex shader that assigns a static position to the vertex
-static const GLchar* vertex_shader_source[] = {
-	"#version 330\n"
-	"layout(location = 0) in vec3 aPos;"
-	"\n"
-	"void main() {\n"
-	"gl_Position = vec4(aPos.x,aPos.y,aPos.z,1.0);\n"
-	"}"
-};
-
-// A fragment shader that assigns a static color
-static const GLchar* fragment_shader_source[] = {
-	"#version 330\n"
-	"uniform vec4 aCol;\n"
-	"out vec4 color;\n"
-
-	"void main() {\n"
-	"color = aCol;\n"
-	"}"
-};
 
 void GLinit(int width, int height) {
 	glViewport(0, 0, width, height);
@@ -778,7 +796,7 @@ void GLinit(int width, int height) {
 	// Read & Load model
 	ReadFile(Model::vertices, Model::uvs, Model::normals, "res/dragon.obj");
 	bool res = loadOBJ("res/dragon.obj", Model::vertices, Model::uvs, Model::normals);
-	
+
 	// Init model
 	Model::Init();
 
@@ -806,14 +824,16 @@ void GLrender(float dt) {
 
 	RV::_MVP = RV::_projection * RV::_modelView;
 
-	wPos = glm::vec4(0.f,0.f,0.f,1.f);
+	wPos = glm::vec4(0.f, 0.f, 0.f, 1.f);
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
-
-	Axis::drawAxis();
-	Cube::drawTwoCubes();
-	LightCube::LightCube();
 	
+	//std::cout << "Camera position: " << glm::to_string(wPos) << std::endl;
+	
+	Axis::drawAxis();
+	Cube::DrawScenario();
+	LightCube::LightCube();
+
 	/////////////////////////////////////////////////////TODO
 	Model::Render();
 	/////////////////////////////////////////////////////////
@@ -829,13 +849,27 @@ void GUI() {
 		/////////////////////////////////////////////////////////
 		if (ImGui::CollapsingHeader("Phong Shading"))
 		{
-			ImGui::DragFloat3("Position", wLight.lightPos);
-			ImGui::SliderFloat3("RGB", wLight.rgb, 0.f, 1.f);
-
+			ImGui::DragFloat3("Light position", wLight.lightPos);
+			ImGui::SliderFloat3("Light color", wLight.rgb, 0.f, 1.f);
+			
 			ImGui::SliderFloat("Ambient", &wLight.ambient, 0.0f, 1.0f);
 			ImGui::SliderFloat("Diffuse", &wLight.diffuse, 0.0f, 1.0f);
-			ImGui::SliderFloat("Specular", &wLight.specular, 0.0f, 1.0f);	
+			ImGui::SliderFloat("Specular", &wLight.specular, 0.0f, 1.0f);
+			
+			ImGui::SliderFloat("Shininess", &wLight.shininess, 0, 255);
 		}
+
+		if (ImGui::CollapsingHeader("Dragon"))
+		{
+			ImGui::DragFloat3("Position", dragon.pos, 0.f, 1.f);
+			ImGui::SliderFloat3("Color", dragon.rgb, 0.f, 1.f);
+		}
+
+		if (ImGui::CollapsingHeader("Scenario"))
+		{
+			ImGui::SliderFloat3("Color", scenario.rgb, 0.f, 1.f);
+		}
+		ImGui::DragFloat("FOV", &radians);
 
 		/////////////////////////////////////////////////////////
 		ImGui::ShowTestWindow();

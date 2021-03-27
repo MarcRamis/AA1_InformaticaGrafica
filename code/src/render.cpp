@@ -34,6 +34,7 @@ extern void ReadFile(std::vector < glm::vec3 >& out_vertices,
 	std::vector < glm::vec2 >& out_uvs,
 	std::vector < glm::vec3 >& out_normals, std::string path);
 
+
 struct Object
 {
 	float pos[3];
@@ -53,18 +54,28 @@ struct Object
 
 struct WLight
 {
-	float rgb[3];
+	float ambient_color[3];
+	float diffuse_color[3];
+	float specular_color[3];
+
 	float ambient, diffuse, specular;
 	float lightPos[3];
-	float specular_color[3];
 
 	float shininess;
 
 	WLight()
 	{
-		rgb[0] = 1.0f;	// R
-		rgb[1] = 1.f;	// G
-		rgb[2] = 1.f;	// B
+		ambient_color[0] = 1.f;	// R
+		ambient_color[1] = 1.f;	// G
+		ambient_color[2] = 1.f;	// B
+
+		diffuse_color[0] = 1.f;	// R
+		diffuse_color[1] = 1.f;	// G
+		diffuse_color[2] = 1.f;	// B
+
+		specular_color[0] = 1.f;
+		specular_color[1] = 0.f;
+		specular_color[2] = 0.f;
 
 		ambient = 0.2f;
 		diffuse = 0.6f;
@@ -83,6 +94,11 @@ Object dragon(0.f,0.f,0.f,0.4f,1.f,1.f);
 Object scenario(0.f,0.f,0.f,0.5f,.5,0.5f);
 
 float radians = 65.f;
+bool moveCamera = false;
+int widthCamera = 730;
+int heightCamera = 730;
+bool direccionCAM = false;
+
 
 ///////// fw decl
 namespace ImGui {
@@ -363,17 +379,18 @@ namespace Cube {
 	in vec4 fragPos;\n\
 	out vec4 out_Color;\n\
 	uniform vec4 objColor;\n\
-	uniform vec4 lightColor;\n\
 	uniform vec4 dir_light; \n\
 	uniform vec4 ambient; \n\
+	uniform vec4 ambient_color; \n\
 	uniform vec4 diffuse; \n\
+	uniform vec4 diffuse_color; \n\
 	uniform vec4 specular; \n\
 	uniform vec4 specular_color; \n\
 	uniform vec4 viewPos; \n\
 	uniform float shininess;\n\
 	void main() {\n\
-		vec4 ambientComp = lightColor * ambient; \n\
-		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * lightColor; \n\
+		vec4 ambientComp = ambient_color * ambient; \n\
+		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * diffuse_color; \n\
 		vec4 viewDir = viewPos - fragPos;\n\
 		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
 		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
@@ -437,12 +454,13 @@ namespace Cube {
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
 		glUniform4f(glGetUniformLocation(cubeProgram, "objColor"), scenario.rgb[0], scenario.rgb[1], scenario.rgb[2], 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "lightColor"), wLight.rgb[0], wLight.rgb[1], wLight.rgb[2], 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "ambient_color"), wLight.ambient_color[0], wLight.ambient_color[1], wLight.ambient_color[2], 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse_color"), wLight.diffuse_color[0], wLight.diffuse_color[1], wLight.diffuse_color[2], 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "specular_color"), wLight.specular_color[0], wLight.specular_color[1], wLight.specular_color[2], 1.f);
 
 		glUniform4f(glGetUniformLocation(cubeProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "specular_color"), 1.f, 0.f, 0.f, 1.f);
 
 		glUniform4f(glGetUniformLocation(cubeProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
@@ -562,9 +580,10 @@ namespace LightCube {
 	out vec4 out_Color;\n\
 	uniform mat4 mv_Mat;\n\
 	uniform vec4 objColor;\n\
-	uniform vec4 lightColor;\n\
+	uniform vec4 ambient_color;\n\
+	uniform vec4 diffuse_color;\n\
 	void main() {\n\
-		out_Color = objColor * lightColor;\n\
+		out_Color = objColor * (ambient_color * diffuse_color);\n\
 	}";
 
 	void setupCube() {
@@ -624,7 +643,8 @@ namespace LightCube {
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
-		glUniform4f(glGetUniformLocation(cubeProgram, "lightColor"), wLight.rgb[0], wLight.rgb[1], wLight.rgb[2], 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "ambient_color"), wLight.ambient_color[0], wLight.ambient_color[1], wLight.ambient_color[2], 1.f);
+		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse_color"), wLight.diffuse_color[0], wLight.diffuse_color[1], wLight.diffuse_color[2], 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "objColor"), 1.f, 1.f, 1.f, 1.f);
 
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
@@ -680,17 +700,18 @@ namespace Model
 	in vec4 fragPos;\n\
 	out vec4 out_Color;\n\
 	uniform vec4 objColor;\n\
-	uniform vec4 lightColor;\n\
 	uniform vec4 dir_light; \n\
 	uniform vec4 ambient; \n\
+	uniform vec4 ambient_color; \n\
 	uniform vec4 diffuse; \n\
+	uniform vec4 diffuse_color; \n\
 	uniform vec4 specular; \n\
 	uniform vec4 specular_color; \n\
 	uniform vec4 viewPos; \n\
 	uniform float shininess;\n\
 	void main() {\n\
-		vec4 ambientComp = lightColor * ambient; \n\
-		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * lightColor; \n\
+		vec4 ambientComp = ambient_color * ambient; \n\
+		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * diffuse_color; \n\
 		vec4 viewDir = viewPos - fragPos;\n\
 		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
 		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
@@ -760,12 +781,13 @@ namespace Model
 		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
 		glUniform4f(glGetUniformLocation(modelProgram, "objColor"), dragon.rgb[0], dragon.rgb[1], dragon.rgb[2], 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "lightColor"), wLight.rgb[0], wLight.rgb[1], wLight.rgb[2], 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "ambient_color"), wLight.ambient_color[0], wLight.ambient_color[1], wLight.ambient_color[2], 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "diffuse_color"), wLight.diffuse_color[0], wLight.diffuse_color[1], wLight.diffuse_color[2], 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "specular_color"), wLight.specular_color[0], wLight.specular_color[1], wLight.specular_color[2], 1.f);
 
 		glUniform4f(glGetUniformLocation(modelProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
 		glUniform4f(glGetUniformLocation(modelProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
 		glUniform4f(glGetUniformLocation(modelProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "specular_color"), 1.f, 0.f, 0.f, 1.f);
 
 		glUniform4f(glGetUniformLocation(modelProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
 		glUniform4f(glGetUniformLocation(modelProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
@@ -814,6 +836,63 @@ void GLcleanup() {
 	/////////////////////////////////////////////////////////
 }
 
+void MoveCamera(float dt)
+{
+	if (moveCamera)
+	{
+		//FOV
+		if (radians <= 64.0f /*&& heightCamera <= 630*/) direccionCAM = true;
+		else if (radians >= 65.0f/* && heightCamera >= 730*/) direccionCAM = false;
+
+		if (!direccionCAM)
+		{
+			radians -= 0.01;
+			//heightCamera--;
+		}
+		else
+		{
+			radians += 0.01;
+			//heightCamera++;
+		}
+
+		//widthCamera = 730;
+		//heightCamera = 730;
+
+		glViewport(0, 0, widthCamera, heightCamera);
+		RV::_projection = glm::perspective(radians, (float)widthCamera / (float)heightCamera, RV::zNear, RV::zFar);
+
+		//RADIANS = FOV
+		//ZNEAR Y ZFAR = DELIMITAN EL ESPACIO POR DELANTE Y POR DETRAS QUE SE RENDERIZA
+		//WIDTH / HEIGHT = POSICION DE LA CAMARA (CREO)
+		//SI MODIFICO WIDHT LA CAMARA SE VA HACIA LOS LADOS Y ROTA UN POCO 
+		//SI MODIFICO HEIGHT LA CAMARA SE VA HACIA ADELANTES / ATRAS Y ARRIBA / ABAJO A LA VEZ
+
+
+		//OTRO CODE //NO ME DA TIEMPO A PROBARLO
+		//LO PONGO TODO AQUI POR AHORA PERO LAS DECLARACIONES NO IRIAN AQUI, MODIFICAR LUEGO
+		//CAMARA
+		glm::vec3 cameraPosition = glm::vec3(0.0f, 3.0f, 1.0f);	//POSICION DE LA CAMARA
+		glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);	//DIRECCION A LA QUE APUNTA LA CAMARA
+		glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);	//DIRECCION A LA QUE VA LA CAMARA
+		//TIMING & UPDATE //ESTO LO HACE EN EL VIDEO PERO DESPUES NO USA ESTAS VARIABLES EN NINGUN SITIO ?
+		/*
+		float customDeltaTime = 0.0f;
+		float customLastFrame = 0.0f;
+		float currentFrame = dt;
+		customDeltaTime = currentFrame - customLastFrame;
+		customLastFrame = currentFrame;
+		*/
+		//VIEW TRANSFORM //CAMERA
+		glm::mat4 view = glm::lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp);
+		RV::_inv_modelview = glm::mat4(view);
+		//RV::_modelView.setMat4("view", view); //Esta linea no se que es, revisar el video https://www.youtube.com/watch?v=AWM4CUfffos&t //6:00
+		//MOVER CAMARA HACIA ADELANTE Y HACIA ATRAS
+		float cameraSpeed = 5 * dt;
+		cameraPosition += cameraSpeed * cameraFront; //HACIA ADELANTE
+		cameraPosition -= cameraSpeed * cameraFront; //HACIA ATRAS
+	}
+}
+
 void GLrender(float dt) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -828,14 +907,17 @@ void GLrender(float dt) {
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
 	
-	//std::cout << "Camera position: " << glm::to_string(wPos) << std::endl;
+	std::cout << "Camera position: " << glm::to_string(wPos) << std::endl;
 	
+	MoveCamera(dt);
+
 	Axis::drawAxis();
 	Cube::DrawScenario();
 	LightCube::LightCube();
 
 	/////////////////////////////////////////////////////TODO
 	Model::Render();
+	
 	/////////////////////////////////////////////////////////
 
 	ImGui::Render();
@@ -850,12 +932,14 @@ void GUI() {
 		if (ImGui::CollapsingHeader("Phong Shading"))
 		{
 			ImGui::DragFloat3("Light position", wLight.lightPos);
-			ImGui::SliderFloat3("Light color", wLight.rgb, 0.f, 1.f);
 			
-			ImGui::SliderFloat("Ambient", &wLight.ambient, 0.0f, 1.0f);
-			ImGui::SliderFloat("Diffuse", &wLight.diffuse, 0.0f, 1.0f);
-			ImGui::SliderFloat("Specular", &wLight.specular, 0.0f, 1.0f);
-			
+			ImGui::SliderFloat3("Ambient Color", wLight.ambient_color, 0.f, 1.f);
+			ImGui::SliderFloat3("Diffuse Color", wLight.diffuse_color, 0.f, 1.f);
+			ImGui::SliderFloat3("Specular Color", wLight.specular_color, 0.f, 1.f);
+
+			ImGui::SliderFloat("Ambient Strength", &wLight.ambient, 0.0f, 1.0f);
+			ImGui::SliderFloat("Diffuse Strength", &wLight.diffuse, 0.0f, 1.0f);
+			ImGui::SliderFloat("Specular Strength", &wLight.specular, 0.0f, 1.0f);
 			ImGui::SliderFloat("Shininess", &wLight.shininess, 0, 255);
 		}
 
@@ -869,7 +953,10 @@ void GUI() {
 		{
 			ImGui::SliderFloat3("Color", scenario.rgb, 0.f, 1.f);
 		}
-		ImGui::DragFloat("FOV", &radians);
+		ImGui::SliderFloat("FOV", &radians, 64.f, 65.0f);
+		ImGui::SliderInt("Camera Width", &widthCamera, 0, 1000);
+		ImGui::SliderInt("Camera Height", &heightCamera, 0, 1000);
+		ImGui::Checkbox("Dolly Effect", &moveCamera);
 
 		/////////////////////////////////////////////////////////
 		ImGui::ShowTestWindow();

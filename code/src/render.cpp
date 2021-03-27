@@ -9,7 +9,6 @@
 
 #include "GL_framework.h"
 
-///////////////////// LOAD MODEL
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -21,6 +20,8 @@
 #include <iostream>
 #include <glm/gtx/string_cast.hpp>
 
+
+///////////////////// EXTERN FUNCTIONS
 extern bool loadOBJ(const char*
 	path,
 	std::vector < glm::vec3 >&
@@ -34,13 +35,14 @@ extern void ReadFile(std::vector < glm::vec3 >& out_vertices,
 	std::vector < glm::vec2 >& out_uvs,
 	std::vector < glm::vec3 >& out_normals, std::string path);
 
-
+///////////////////// DATA STRUCTURE
 struct Object
 {
 	float pos[3];
 	float rgb[3];
-
-	Object(float posX, float posY, float posZ, float r, float g, float b)
+	bool haveAmbient, haveDiffuse, haveSpecular;
+	
+	Object(float posX, float posY, float posZ, float r, float g, float b, bool _hA, bool _hD, bool _hS)
 	{
 		pos[0] = posX;
 		pos[1] = posY;
@@ -49,9 +51,12 @@ struct Object
 		rgb[0] = r;
 		rgb[1] = g;
 		rgb[2] = b;
+
+		haveAmbient = _hA;
+		haveDiffuse = _hD;
+		haveSpecular = _hS;
 	}
 };
-
 struct WLight
 {
 	float ambient_color[3];
@@ -78,27 +83,28 @@ struct WLight
 		specular_color[2] = 0.f;
 
 		ambient = 0.2f;
-		diffuse = 0.6f;
+		diffuse = 0.3f;
 		specular = 0.5f;
 
 		lightPos[0] = 11.f;
 		lightPos[1] = 11.f;
 		lightPos[2] = 0.f;
 
-		shininess = 2.f;
+		shininess = 30.f;
 	};
 };
+///////////////////// VARIABLES
 glm::vec4 wPos;
 WLight wLight;
-Object dragon(0.f,0.f,0.f,0.4f,1.f,1.f);
-Object scenario(0.f,0.f,0.f,0.5f,.5,0.5f);
+Object dragon(0.f, 0.f, 0.f, 0.4f, 1.f, 1.f, true, true, false);
+Object sword(-7.f,2.f,-7.f,0.4f,1.f,1.f, true, true, true);
+Object scenario(0.f,0.f,0.f,0.5f,.5,0.5f, true, true, false);
 
 float radians = 65.f;
 bool moveCamera = false;
 int widthCamera = 730;
 int heightCamera = 730;
 bool direccionCAM = false;
-
 
 ///////// fw decl
 namespace ImGui {
@@ -292,7 +298,6 @@ void main() {\n\
 		glBindVertexArray(0);
 	}
 }
-
 ////////////////////////////////////////////////// CUBE
 namespace Cube {
 	GLuint cubeVao;
@@ -388,13 +393,47 @@ namespace Cube {
 	uniform vec4 specular_color; \n\
 	uniform vec4 viewPos; \n\
 	uniform float shininess;\n\
+	uniform bool have_ambient;\n\
+	uniform bool have_diffuse;\n\
+	uniform bool have_specular;\n\
 	void main() {\n\
 		vec4 ambientComp = ambient_color * ambient; \n\
 		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * diffuse_color; \n\
 		vec4 viewDir = viewPos - fragPos;\n\
 		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
 		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
+		if(have_ambient && have_diffuse && have_specular)\n\
+		{\n\
 		out_Color = objColor * (ambientComp + diffuseComp + specularComp);\n\
+		}\n\
+		else if(have_ambient && have_diffuse)\n\
+		{\n\
+		out_Color = objColor * (ambientComp + diffuseComp);\n\
+		}\n\
+		else if(have_ambient && have_specular)\n\
+		{\n\
+		out_Color = objColor * (ambientComp + specularComp);\n\
+		}\n\
+		else if(have_diffuse && have_specular)\n\
+		{\n\
+		out_Color = objColor * (diffuseComp + specularComp);\n\
+		}\n\
+		else if(have_ambient)\n\
+		{\n\
+		out_Color = objColor * (ambientComp);\n\
+		}\n\
+		else if(have_diffuse)\n\
+		{\n\
+		out_Color = objColor * (diffuseComp);\n\
+		}\n\
+		else if(have_specular)\n\
+		{\n\
+		out_Color = objColor * (specularComp);\n\
+		}\n\
+		else\n\
+		{\n\
+		out_Color = objColor;\n\
+		}\n\
 	}";
 	
 	void setupCube() {
@@ -444,7 +483,7 @@ namespace Cube {
 	void DrawScenario() {
 		glEnable(GL_PRIMITIVE_RESTART);
 		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(0.0f, -0.6f, 0.0f));
-		glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(10.0f, 1.0f, 20.0f));
+		glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(20.0f, 1.0f, 20.0f));
 		objMat = t * s;
 
 		glBindVertexArray(cubeVao);
@@ -465,6 +504,10 @@ namespace Cube {
 		glUniform4f(glGetUniformLocation(cubeProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
 		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
 		glUniform1f(glGetUniformLocation(cubeProgram, "shininess"), wLight.shininess);
+
+		glUniform1i(glGetUniformLocation(cubeProgram, "have_ambient"), scenario.haveAmbient);
+		glUniform1i(glGetUniformLocation(cubeProgram, "have_diffuse"), scenario.haveDiffuse);
+		glUniform1i(glGetUniformLocation(cubeProgram, "have_specular"), scenario.haveSpecular);
 
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 
@@ -487,6 +530,12 @@ namespace Cube {
 
 		t = glm::translate(glm::mat4(), glm::vec3(4.0f, 2.0f, 7.0f));
 		s = glm::scale(glm::mat4(), glm::vec3(1.0f, 6.0f, 1.0f));
+		objMat = t * s;
+		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
+
+		t = glm::translate(glm::mat4(), glm::vec3(-7.0f, 1.0f, -7.0f));
+		s = glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 5.0f));
 		objMat = t * s;
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
@@ -655,8 +704,8 @@ namespace LightCube {
 		glDisable(GL_PRIMITIVE_RESTART);
 	}
 }
-////////////////////////////////////////////////// MODEL
-namespace Model
+////////////////////////////////////////////////// MODEL DRAGON
+namespace ModelDragon
 {
 	GLuint modelVao;
 	GLuint modelVbo[4];
@@ -709,13 +758,47 @@ namespace Model
 	uniform vec4 specular_color; \n\
 	uniform vec4 viewPos; \n\
 	uniform float shininess;\n\
+	uniform bool have_ambient;\n\
+	uniform bool have_diffuse;\n\
+	uniform bool have_specular;\n\
 	void main() {\n\
 		vec4 ambientComp = ambient_color * ambient; \n\
 		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * diffuse_color; \n\
 		vec4 viewDir = viewPos - fragPos;\n\
 		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
 		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
+		if(have_ambient && have_diffuse && have_specular)\n\
+		{\n\
 		out_Color = objColor * (ambientComp + diffuseComp + specularComp);\n\
+		}\n\
+		else if(have_ambient && have_diffuse)\n\
+		{\n\
+		out_Color = objColor * (ambientComp + diffuseComp);\n\
+		}\n\
+		else if(have_ambient && have_specular)\n\
+		{\n\
+		out_Color = objColor * (ambientComp + specularComp);\n\
+		}\n\
+		else if(have_diffuse && have_specular)\n\
+		{\n\
+		out_Color = objColor * (diffuseComp + specularComp);\n\
+		}\n\
+		else if(have_ambient)\n\
+		{\n\
+		out_Color = objColor * (ambientComp);\n\
+		}\n\
+		else if(have_diffuse)\n\
+		{\n\
+		out_Color = objColor * (diffuseComp);\n\
+		}\n\
+		else if(have_specular)\n\
+		{\n\
+		out_Color = objColor * (specularComp);\n\
+		}\n\
+		else\n\
+		{\n\
+		out_Color = objColor;\n\
+		}\n\
 	}";
 
 	void Init() {
@@ -792,14 +875,200 @@ namespace Model
 		glUniform4f(glGetUniformLocation(modelProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
 		glUniform4f(glGetUniformLocation(modelProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
 		glUniform1f(glGetUniformLocation(modelProgram, "shininess"), wLight.shininess);
+
+		glUniform1i(glGetUniformLocation(modelProgram, "have_ambient"), dragon.haveAmbient);
+		glUniform1i(glGetUniformLocation(modelProgram, "have_diffuse"), dragon.haveDiffuse);
+		glUniform1i(glGetUniformLocation(modelProgram, "have_specular"), dragon.haveSpecular);
+
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 		
 		glUseProgram(0);
 		glBindVertexArray(0);
 	}
 }
-/////////////////////////////////////////////////
+///////////////////////////////////////////////// MODEL SWORD
+namespace ModelSword
+{
+	GLuint modelVao;
+	GLuint modelVbo[4];
+	GLuint modelShaders[2];
+	GLuint modelProgram;
+	glm::mat4 objMat = glm::mat4(1.f);
 
+	std::vector< glm::vec3 > vertices;
+	std::vector< glm::vec2 > uvs;
+	std::vector< glm::vec3 > normals;
+
+	//GLubyte modelIdx[] = {
+	//0, 1, 2, 3, UCHAR_MAX,
+	//4, 5, 6, 7, UCHAR_MAX,
+	//8, 9, 10, 11, UCHAR_MAX,
+	//12, 13, 14, 15, UCHAR_MAX,
+	//16, 17, 18, 19, UCHAR_MAX,
+	//20, 21, 22, 23, UCHAR_MAX
+	//};
+
+	const char* model_vertShader =
+		"#version 330\n\
+	in vec3 in_Position;\n\
+	in vec3 in_Normal;\n\
+	out vec4 vert_Normal;\n\
+	out vec4 fragPos;\n\
+	mat4 normalMat;\n\
+	uniform mat4 objMat;\n\
+	uniform mat4 mv_Mat;\n\
+	uniform mat4 mvpMat;\n\
+	void main() {\n\
+		normalMat = transpose(inverse(objMat));\n\
+		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
+		vert_Normal = normalMat * vec4(in_Normal, 0.0);\n\
+		fragPos = vec4(objMat * vec4(in_Position, 1.0));\n\
+	}";
+
+	const char* model_fragShader =
+		"#version 330\n\
+	in vec4 vert_Normal;\n\
+	in vec4 fragPos;\n\
+	out vec4 out_Color;\n\
+	uniform vec4 objColor;\n\
+	uniform vec4 dir_light; \n\
+	uniform vec4 ambient; \n\
+	uniform vec4 ambient_color; \n\
+	uniform vec4 diffuse; \n\
+	uniform vec4 diffuse_color; \n\
+	uniform vec4 specular; \n\
+	uniform vec4 specular_color; \n\
+	uniform vec4 viewPos; \n\
+	uniform float shininess;\n\
+	uniform bool have_ambient;\n\
+	uniform bool have_diffuse;\n\
+	uniform bool have_specular;\n\
+	void main() {\n\
+		vec4 ambientComp = ambient_color * ambient; \n\
+		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * diffuse_color; \n\
+		vec4 viewDir = viewPos - fragPos;\n\
+		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
+		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
+		if(have_ambient && have_diffuse && have_specular)\n\
+		{\n\
+		out_Color = objColor * (ambientComp + diffuseComp + specularComp);\n\
+		}\n\
+		else if(have_ambient && have_diffuse)\n\
+		{\n\
+		out_Color = objColor * (ambientComp + diffuseComp);\n\
+		}\n\
+		else if(have_ambient && have_specular)\n\
+		{\n\
+		out_Color = objColor * (ambientComp + specularComp);\n\
+		}\n\
+		else if(have_diffuse && have_specular)\n\
+		{\n\
+		out_Color = objColor * (diffuseComp + specularComp);\n\
+		}\n\
+		else if(have_ambient)\n\
+		{\n\
+		out_Color = objColor * (ambientComp);\n\
+		}\n\
+		else if(have_diffuse)\n\
+		{\n\
+		out_Color = objColor * (diffuseComp);\n\
+		}\n\
+		else if(have_specular)\n\
+		{\n\
+		out_Color = objColor * (specularComp);\n\
+		}\n\
+		else\n\
+		{\n\
+		out_Color = objColor;\n\
+		}\n\
+	}";
+
+	void Init() {
+
+		glGenVertexArrays(1, &modelVao);
+		glBindVertexArray(modelVao);
+		glGenBuffers(3, modelVbo);
+
+		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[0]);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(0);
+
+		//glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
+		//glBufferData(GL_ARRAY_BUFFER, sizeof(uvs), uvs.data(), GL_STATIC_DRAW);
+		//glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		//glEnableVertexAttribArray(1);
+
+		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), &normals[0], GL_STATIC_DRAW);
+		glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(1);
+
+		//glPrimitiveRestartIndex(UCHAR_MAX);
+		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, modelVbo[3]);
+		//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(modelIdx), modelIdx, GL_STATIC_DRAW);
+
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+		modelShaders[0] = compileShader(model_vertShader, GL_VERTEX_SHADER, "cubeVert");
+		modelShaders[1] = compileShader(model_fragShader, GL_FRAGMENT_SHADER, "cubeFrag");
+
+		modelProgram = glCreateProgram();
+		glAttachShader(modelProgram, modelShaders[0]);
+		glAttachShader(modelProgram, modelShaders[1]);
+		glBindAttribLocation(modelProgram, 0, "in_Position");
+		glBindAttribLocation(modelProgram, 1, "in_Normal");
+		linkProgram(modelProgram);
+	}
+
+	void Clean() {
+		glDeleteBuffers(3, modelVbo);
+		glDeleteVertexArrays(1, &modelVao);
+
+		glDeleteProgram(modelProgram);
+		glDeleteShader(modelShaders[0]);
+		glDeleteShader(modelShaders[1]);
+	}
+
+	void Render()
+	{
+		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(sword.pos[0], sword.pos[1], sword.pos[2]));
+		glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
+		objMat = t * s;
+
+		glBindVertexArray(modelVao);
+		glUseProgram(modelProgram);
+
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+
+		glUniform4f(glGetUniformLocation(modelProgram, "objColor"), sword.rgb[0], sword.rgb[1], sword.rgb[2], 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "ambient_color"), wLight.ambient_color[0], wLight.ambient_color[1], wLight.ambient_color[2], 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "diffuse_color"), wLight.diffuse_color[0], wLight.diffuse_color[1], wLight.diffuse_color[2], 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "specular_color"), wLight.specular_color[0], wLight.specular_color[1], wLight.specular_color[2], 1.f);
+
+		glUniform4f(glGetUniformLocation(modelProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
+
+		glUniform4f(glGetUniformLocation(modelProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
+		glUniform4f(glGetUniformLocation(modelProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
+		glUniform1f(glGetUniformLocation(modelProgram, "shininess"), wLight.shininess);
+
+		glUniform1i(glGetUniformLocation(modelProgram, "have_ambient"), sword.haveAmbient);
+		glUniform1i(glGetUniformLocation(modelProgram, "have_diffuse"), sword.haveDiffuse);
+		glUniform1i(glGetUniformLocation(modelProgram, "have_specular"), sword.haveSpecular);
+
+		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+
+		glUseProgram(0);
+		glBindVertexArray(0);
+	}
+}
+/////////////////////////////////////////////////
 void GLinit(int width, int height) {
 	glViewport(0, 0, width, height);
 	glClearColor(0.2f, 0.2f, 0.2f, 1.f);
@@ -814,13 +1083,17 @@ void GLinit(int width, int height) {
 	Axis::setupAxis();
 	Cube::setupCube();
 	LightCube::setupCube();
+	
+	// Setup models 
+	// DRAGON
+	ReadFile(ModelDragon::vertices, ModelDragon::uvs, ModelDragon::normals, "res/dragon.obj");
+	bool res = loadOBJ("res/dragon.obj", ModelDragon::vertices, ModelDragon::uvs, ModelDragon::normals);
+	ModelDragon::Init();
 
-	// Read & Load model
-	ReadFile(Model::vertices, Model::uvs, Model::normals, "res/dragon.obj");
-	bool res = loadOBJ("res/dragon.obj", Model::vertices, Model::uvs, Model::normals);
-
-	// Init model
-	Model::Init();
+	// SWORD
+	ReadFile(ModelSword::vertices, ModelSword::uvs, ModelSword::normals, "res/espada.obj");
+	res = loadOBJ("res/espada.obj", ModelSword::vertices, ModelSword::uvs, ModelSword::normals);
+	ModelSword::Init();
 
 	/////////////////////////////////////////////////////
 }
@@ -836,6 +1109,7 @@ void GLcleanup() {
 	/////////////////////////////////////////////////////////
 }
 
+// DOLLY FUNCTION
 void MoveCamera(float dt)
 {
 	if (moveCamera)
@@ -902,21 +1176,22 @@ void GLrender(float dt) {
 	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[0], glm::vec3(0.f, 1.f, 0.f));
 
 	RV::_MVP = RV::_projection * RV::_modelView;
-
+	
+	// Get camera position
 	wPos = glm::vec4(0.f, 0.f, 0.f, 1.f);
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
 	
-	std::cout << "Camera position: " << glm::to_string(wPos) << std::endl;
-	
-	MoveCamera(dt);
+	//std::cout << "Camera position: " << glm::to_string(wPos) << std::endl;
+	MoveCamera(dt);	// dolly effect
 
 	Axis::drawAxis();
 	Cube::DrawScenario();
 	LightCube::LightCube();
 
 	/////////////////////////////////////////////////////TODO
-	Model::Render();
+	ModelDragon::Render();
+	ModelSword::Render();
 	
 	/////////////////////////////////////////////////////////
 
@@ -943,16 +1218,32 @@ void GUI() {
 			ImGui::SliderFloat("Shininess", &wLight.shininess, 0, 255);
 		}
 
-		if (ImGui::CollapsingHeader("Dragon"))
-		{
-			ImGui::DragFloat3("Position", dragon.pos, 0.f, 1.f);
-			ImGui::SliderFloat3("Color", dragon.rgb, 0.f, 1.f);
-		}
-
 		if (ImGui::CollapsingHeader("Scenario"))
 		{
-			ImGui::SliderFloat3("Color", scenario.rgb, 0.f, 1.f);
+			ImGui::SliderFloat3("Object Color", scenario.rgb, 0.f, 1.f);
+			ImGui::Checkbox("Active ambient", &scenario.haveAmbient);
+			ImGui::Checkbox("Active diffuse", &scenario.haveDiffuse);
+			ImGui::Checkbox("Active specular", &scenario.haveSpecular);
 		}
+
+		if (ImGui::CollapsingHeader("Dragon"))
+		{
+			ImGui::DragFloat3("Object Position", dragon.pos, 0.f, 1.f);
+			ImGui::SliderFloat3("Object Color", dragon.rgb, 0.f, 1.f);
+			ImGui::Checkbox("Active ambient", &dragon.haveAmbient);
+			ImGui::Checkbox("Active diffuse", &dragon.haveDiffuse);
+			ImGui::Checkbox("Active specular", &dragon.haveSpecular);
+		}
+		
+		if (ImGui::CollapsingHeader("Sword"))
+		{
+			ImGui::DragFloat3("Object Position", sword.pos, 0.f, 1.f);
+			ImGui::SliderFloat3("Object Color", sword.rgb, 0.f, 1.f);
+			ImGui::Checkbox("Active ambient", &sword.haveAmbient);
+			ImGui::Checkbox("Active diffuse", &sword.haveDiffuse);
+			ImGui::Checkbox("Active specular", &sword.haveSpecular);
+		}
+
 		ImGui::SliderFloat("FOV", &radians, 64.f, 65.0f);
 		ImGui::SliderInt("Camera Width", &widthCamera, 0, 1000);
 		ImGui::SliderInt("Camera Height", &heightCamera, 0, 1000);

@@ -101,10 +101,11 @@ Object sword(-7.f,2.f,-7.f,0.4f,1.f,1.f, true, true, true);
 Object scenario(0.f,0.f,0.f,0.5f,.5,0.5f, true, true, false);
 
 float radians = 65.f;
-bool moveCamera = false;
+bool moveCamera = true;
 int widthCamera = 730;
 int heightCamera = 730;
 bool direccionCAM = false;
+float width = 16.f;
 
 ///////// fw decl
 namespace ImGui {
@@ -118,7 +119,7 @@ namespace Axis {
 ////////////////
 
 namespace RenderVars {
-	const float FOV = glm::radians(radians);
+	float FOV = glm::radians(radians);
 	const float zNear = 1.f;
 	const float zFar = 50.f;
 
@@ -762,8 +763,12 @@ namespace ModelDragon
 	uniform bool have_diffuse;\n\
 	uniform bool have_specular;\n\
 	void main() {\n\
+		// Phong Shading\n\
+		// Ambient \n\
 		vec4 ambientComp = ambient_color * ambient; \n\
+		// Diffuse \n\
 		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * diffuse_color; \n\
+		// Specular \n\
 		vec4 viewDir = viewPos - fragPos;\n\
 		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
 		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
@@ -998,7 +1003,7 @@ namespace ModelSword
 		//glBufferData(GL_ARRAY_BUFFER, sizeof(uvs), uvs.data(), GL_STATIC_DRAW);
 		//glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 		//glEnableVertexAttribArray(1);
-
+		
 		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), &normals[0], GL_STATIC_DRAW);
 		glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
@@ -1075,7 +1080,7 @@ void GLinit(int width, int height) {
 	glClearDepth(1.f);
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_DEPTH_TEST);
-	//glEnable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE);
 
 	RV::_projection = glm::perspective(RV::FOV, (float)width / (float)height, RV::zNear, RV::zFar);
 
@@ -1100,81 +1105,38 @@ void GLinit(int width, int height) {
 void GLcleanup() {
 	Axis::cleanupAxis();
 	Cube::cleanupCube();
-
+	
 	/////////////////////////////////////////////////////TODO
-	// Do your cleanup code here
-	// ...
-	// ...
-	// ...
+	LightCube::cleanupCube();
+	ModelDragon::Clean();
+	ModelSword::Clean();
 	/////////////////////////////////////////////////////////
 }
 
 // DOLLY FUNCTION
-void MoveCamera(float dt)
+void MoveCamera()
 {
 	if (moveCamera)
 	{
-		//FOV
-		if (radians <= 64.0f /*&& heightCamera <= 630*/) direccionCAM = true;
-		else if (radians >= 65.0f/* && heightCamera >= 730*/) direccionCAM = false;
-
-		if (!direccionCAM)
-		{
-			radians -= 0.01;
-			//heightCamera--;
-		}
-		else
-		{
-			radians += 0.01;
-			//heightCamera++;
-		}
-
-		//widthCamera = 730;
-		//heightCamera = 730;
-
-		glViewport(0, 0, widthCamera, heightCamera);
-		RV::_projection = glm::perspective(radians, (float)widthCamera / (float)heightCamera, RV::zNear, RV::zFar);
-
-		//RADIANS = FOV
-		//ZNEAR Y ZFAR = DELIMITAN EL ESPACIO POR DELANTE Y POR DETRAS QUE SE RENDERIZA
-		//WIDTH / HEIGHT = POSICION DE LA CAMARA (CREO)
-		//SI MODIFICO WIDHT LA CAMARA SE VA HACIA LOS LADOS Y ROTA UN POCO 
-		//SI MODIFICO HEIGHT LA CAMARA SE VA HACIA ADELANTES / ATRAS Y ARRIBA / ABAJO A LA VEZ
-
-
-		//OTRO CODE //NO ME DA TIEMPO A PROBARLO
-		//LO PONGO TODO AQUI POR AHORA PERO LAS DECLARACIONES NO IRIAN AQUI, MODIFICAR LUEGO
-		//CAMARA
-		glm::vec3 cameraPosition = glm::vec3(0.0f, 3.0f, 1.0f);	//POSICION DE LA CAMARA
-		glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);	//DIRECCION A LA QUE APUNTA LA CAMARA
-		glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);	//DIRECCION A LA QUE VA LA CAMARA
-		//TIMING & UPDATE //ESTO LO HACE EN EL VIDEO PERO DESPUES NO USA ESTAS VARIABLES EN NINGUN SITIO ?
-		/*
-		float customDeltaTime = 0.0f;
-		float customLastFrame = 0.0f;
-		float currentFrame = dt;
-		customDeltaTime = currentFrame - customLastFrame;
-		customLastFrame = currentFrame;
-		*/
-		//VIEW TRANSFORM //CAMERA
-		glm::mat4 view = glm::lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp);
-		RV::_inv_modelview = glm::mat4(view);
-		//RV::_modelView.setMat4("view", view); //Esta linea no se que es, revisar el video https://www.youtube.com/watch?v=AWM4CUfffos&t //6:00
-		//MOVER CAMARA HACIA ADELANTE Y HACIA ATRAS
-		float cameraSpeed = 5 * dt;
-		cameraPosition += cameraSpeed * cameraFront; //HACIA ADELANTE
-		cameraPosition -= cameraSpeed * cameraFront; //HACIA ATRAS
+		float distance = RV::panv[2] - dragon.pos[2];
+		RV::FOV = 2.f * glm::atan(0.5f * width / glm::abs(distance));
+	}
+	else
+	{
+		RV::FOV = glm::radians(radians);
 	}
 }
 
 void GLrender(float dt) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	RV::_projection = glm::perspective(RV::FOV, (float)800.f / (float)600.f, RV::zNear, RV::zFar);
+
 	RV::_modelView = glm::mat4(1.f);
 	RV::_modelView = glm::translate(RV::_modelView, glm::vec3(RV::panv[0], RV::panv[1], RV::panv[2]));
 	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[1], glm::vec3(1.f, 0.f, 0.f));
 	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[0], glm::vec3(0.f, 1.f, 0.f));
-
+	
 	RV::_MVP = RV::_projection * RV::_modelView;
 	
 	// Get camera position
@@ -1182,8 +1144,7 @@ void GLrender(float dt) {
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
 	
-	//std::cout << "Camera position: " << glm::to_string(wPos) << std::endl;
-	MoveCamera(dt);	// dolly effect
+	MoveCamera();	// dolly effect
 
 	Axis::drawAxis();
 	Cube::DrawScenario();
@@ -1244,10 +1205,12 @@ void GUI() {
 			ImGui::Checkbox("Active specular", &sword.haveSpecular);
 		}
 
-		ImGui::SliderFloat("FOV", &radians, 64.f, 65.0f);
-		ImGui::SliderInt("Camera Width", &widthCamera, 0, 1000);
-		ImGui::SliderInt("Camera Height", &heightCamera, 0, 1000);
-		ImGui::Checkbox("Dolly Effect", &moveCamera);
+		if (ImGui::CollapsingHeader("Camera Properties - Dolly"))
+		{
+			ImGui::SliderFloat("Width", &width, 5, 30);
+			ImGui::SliderFloat("PosZ", &RV::panv[2], -20, -6);
+			ImGui::Checkbox("Dolly Effect", &moveCamera);
+		}
 
 		/////////////////////////////////////////////////////////
 		ImGui::ShowTestWindow();

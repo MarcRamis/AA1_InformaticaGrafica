@@ -541,6 +541,14 @@ namespace Cube {
 		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
 		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
 
+		for (size_t i = 0; i < 5; i++)
+		{
+			t = glm::translate(glm::mat4(), glm::vec3(i * 3, 2.0f, -10.0f));
+			objMat = t;
+			glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
+			glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
+		}
+
 		glUseProgram(0);
 		glBindVertexArray(0);
 
@@ -1116,11 +1124,13 @@ void GLcleanup() {
 // DOLLY FUNCTION
 void MoveCamera()
 {
+	//ACTIVATE DOLLY EFFECT
 	if (moveCamera)
 	{
 		float distance = RV::panv[2] - dragon.pos[2];
 		RV::FOV = 2.f * glm::atan(0.5f * width / glm::abs(distance));
 	}
+	//RESET FOV
 	else
 	{
 		RV::FOV = glm::radians(radians);

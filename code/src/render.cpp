@@ -9,6 +9,7 @@
 
 #include "GL_framework.h"
 
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -16,10 +17,10 @@
 
 #include <glm\gtc\type_ptr.hpp>
 #include <glm\gtc\matrix_transform.hpp>
-
-#include <iostream>
 #include <glm/gtx/string_cast.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 ///////////////////// EXTERN FUNCTIONS
 extern bool loadOBJ(const char*
@@ -96,16 +97,17 @@ struct WLight
 ///////////////////// VARIABLES
 glm::vec4 wPos;
 WLight wLight;
-Object dragon(0.f, 0.f, 0.f, 0.4f, 1.f, 1.f, true, true, false);
+Object dragon(1.f, 1.f, 1.f, 0.4f, 1.f, 1.f, false, false, false);
 Object sword(-7.f,2.f,-7.f,0.4f,1.f,1.f, true, true, true);
 Object scenario(0.f,0.f,0.f,0.5f,.5,0.5f, true, true, false);
 
 float radians = 65.f;
-bool moveCamera = true;
+bool moveCamera = false;
 int widthCamera = 730;
 int heightCamera = 730;
 bool direccionCAM = false;
 float width = 16.f;
+
 
 ///////// fw decl
 namespace ImGui {
@@ -726,7 +728,11 @@ namespace ModelDragon
 	std::vector< glm::vec2 > uvs;
 	std::vector< glm::vec3 > normals;
 
-	//GLubyte modelIdx[] = {
+	int width, height, nrChannels;
+	unsigned char* data;
+	unsigned int texture;
+
+	//GLubyte modelIdx[] = {	
 	//0, 1, 2, 3, UCHAR_MAX,
 	//4, 5, 6, 7, UCHAR_MAX,
 	//8, 9, 10, 11, UCHAR_MAX,
@@ -739,8 +745,10 @@ namespace ModelDragon
 		"#version 330\n\
 	in vec3 in_Position;\n\
 	in vec3 in_Normal;\n\
+	in vec2 in_TexCoord;\n\
 	out vec4 vert_Normal;\n\
 	out vec4 fragPos;\n\
+	out vec2 texCoord;\n\
 	mat4 normalMat;\n\
 	uniform mat4 objMat;\n\
 	uniform mat4 mv_Mat;\n\
@@ -750,8 +758,9 @@ namespace ModelDragon
 		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
 		vert_Normal = normalMat * vec4(in_Normal, 0.0);\n\
 		fragPos = vec4(objMat * vec4(in_Position, 1.0));\n\
+		texCoord = in_TexCoord;\n\
 	}";
-
+	
 	const char* model_fragShader =
 		"#version 330\n\
 	in vec4 vert_Normal;\n\
@@ -770,6 +779,9 @@ namespace ModelDragon
 	uniform bool have_ambient;\n\
 	uniform bool have_diffuse;\n\
 	uniform bool have_specular;\n\
+	// TEXTURE \n\
+	in vec2 texCoord; \n\
+	uniform sampler2D ourTexture; \n\
 	void main() {\n\
 		// Phong Shading\n\
 		// Ambient \n\
@@ -810,31 +822,36 @@ namespace ModelDragon
 		}\n\
 		else\n\
 		{\n\
-		out_Color = objColor;\n\
+		//out_Color = objColor;\n\
+		// TEXTURE\n\
+		vec4 textureColor = texture(ourTexture,texCoord);\n\
+		out_Color = textureColor * objColor * (ambientComp + diffuseComp);\n\
 		}\n\
 	}";
 
 	void Init() {
-
 		glGenVertexArrays(1, &modelVao);
 		glBindVertexArray(modelVao);
 		glGenBuffers(3, modelVbo);
 
+		// Vertices
 		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[0]);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
 		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 		glEnableVertexAttribArray(0);
 
-		//glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
-		//glBufferData(GL_ARRAY_BUFFER, sizeof(uvs), uvs.data(), GL_STATIC_DRAW);
-		//glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		//glEnableVertexAttribArray(1);
-
+		// Normals
 		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), &normals[0], GL_STATIC_DRAW);
 		glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 		glEnableVertexAttribArray(1);
 
+		// Uvs
+		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[2]);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * uvs.size(), &uvs[0], GL_STATIC_DRAW);
+		glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(2);
+		
 		//glPrimitiveRestartIndex(UCHAR_MAX);
 		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, modelVbo[3]);
 		//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(modelIdx), modelIdx, GL_STATIC_DRAW);
@@ -842,16 +859,47 @@ namespace ModelDragon
 		glBindVertexArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-		modelShaders[0] = compileShader(model_vertShader, GL_VERTEX_SHADER, "cubeVert");
-		modelShaders[1] = compileShader(model_fragShader, GL_FRAGMENT_SHADER, "cubeFrag");
+		
+		modelShaders[0] = compileShader(model_vertShader, GL_VERTEX_SHADER, "modelDragonVert");
+		modelShaders[1] = compileShader(model_fragShader, GL_FRAGMENT_SHADER, "modelDragonFrag");
 
 		modelProgram = glCreateProgram();
 		glAttachShader(modelProgram, modelShaders[0]);
 		glAttachShader(modelProgram, modelShaders[1]);
 		glBindAttribLocation(modelProgram, 0, "in_Position");
 		glBindAttribLocation(modelProgram, 1, "in_Normal");
+		glBindAttribLocation(modelProgram, 2, "in_TexCoord");
 		linkProgram(modelProgram);
+	}
+
+	void InitTexture()
+	{
+		// CARGAR TEXTURA
+		data = stbi_load("res/brick2.jpg", &width, &height, &nrChannels, 0);
+		
+		// CREAR TEXTURA	
+		glGenTextures(1, &texture);
+		glBindTexture(GL_TEXTURE_2D, texture);
+
+		if (data)
+		{
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			glGenerateMipmap(GL_TEXTURE_2D);
+		}
+		else
+		{
+			std::cout << "Failed to load texture" << std::endl;
+		}
+
+		// Parámetros de la imagen
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+		//float borderColor[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+		//glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+		
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	}
 
 	void Clean() {
@@ -861,13 +909,16 @@ namespace ModelDragon
 		glDeleteProgram(modelProgram);
 		glDeleteShader(modelShaders[0]);
 		glDeleteShader(modelShaders[1]);
+
+		stbi_image_free(data);
+		glDeleteTextures(1, &texture);
 	}
 
 	void Render()
 	{
 		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(dragon.pos[0], dragon.pos[1], dragon.pos[2]));
-		glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
-		objMat = t * s;
+		//glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
+		objMat = t;
 		
 		glBindVertexArray(modelVao);
 		glUseProgram(modelProgram);
@@ -892,9 +943,14 @@ namespace ModelDragon
 		glUniform1i(glGetUniformLocation(modelProgram, "have_ambient"), dragon.haveAmbient);
 		glUniform1i(glGetUniformLocation(modelProgram, "have_diffuse"), dragon.haveDiffuse);
 		glUniform1i(glGetUniformLocation(modelProgram, "have_specular"), dragon.haveSpecular);
-
-		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 		
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glUniform1i(glGetUniformLocation(modelProgram, "ourTexture"), 0);
+		
+		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+		glDrawElements(GL_TRIANGLE_STRIP, uvs.size(), GL_UNSIGNED_INT, 0);
+
 		glUseProgram(0);
 		glBindVertexArray(0);
 	}
@@ -1099,9 +1155,10 @@ void GLinit(int width, int height) {
 	
 	// Setup models 
 	// DRAGON
-	ReadFile(ModelDragon::vertices, ModelDragon::uvs, ModelDragon::normals, "res/dragon.obj");
-	bool res = loadOBJ("res/dragon.obj", ModelDragon::vertices, ModelDragon::uvs, ModelDragon::normals);
+	ReadFile(ModelDragon::vertices, ModelDragon::uvs, ModelDragon::normals, "res/cube.obj");
+	bool res = loadOBJ("res/cube.obj", ModelDragon::vertices, ModelDragon::uvs, ModelDragon::normals);
 	ModelDragon::Init();
+	ModelDragon::InitTexture();
 
 	// SWORD
 	ReadFile(ModelSword::vertices, ModelSword::uvs, ModelSword::normals, "res/espada.obj");

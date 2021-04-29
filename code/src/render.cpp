@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cassert>
 
+// IMGUI
 #include <imgui\imgui.h>
 #include <imgui\imgui_impl_sdl_gl3.h>
 
@@ -15,12 +16,12 @@
 #include <vector>
 #include <string>
 
-#include <glm\gtc\type_ptr.hpp>
-#include <glm\gtc\matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+
+#include "Shader.h"
 
 ///////////////////// EXTERN FUNCTIONS
 extern bool loadOBJ(const char*
@@ -35,6 +36,7 @@ extern bool loadOBJ(const char*
 extern void ReadFile(std::vector < glm::vec3 >& out_vertices,
 	std::vector < glm::vec2 >& out_uvs,
 	std::vector < glm::vec3 >& out_normals, std::string path);
+
 
 ///////////////////// DATA STRUCTURE
 struct Object
@@ -98,7 +100,7 @@ struct WLight
 glm::vec4 wPos;
 WLight wLight;
 Object dragon(1.f, 1.f, 1.f, 0.4f, 1.f, 1.f, false, false, false);
-Object sword(-7.f,2.f,-7.f,0.4f,1.f,1.f, true, true, true);
+Object sword(-7.f,2.f,-7.f,0.4f,1.f,1.f, true,  true, false);
 Object scenario(0.f,0.f,0.f,0.5f,.5,0.5f, true, true, false);
 
 float radians = 65.f;
@@ -107,6 +109,42 @@ int widthCamera = 730;
 int heightCamera = 730;
 bool direccionCAM = false;
 float width = 16.f;
+
+float moveWTime = 0.0f;
+
+Shader shader;
+
+#pragma region PROFE
+
+GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name = "") {
+	GLuint shader = glCreateShader(shaderType);
+	glShaderSource(shader, 1, &shaderStr, NULL);
+	glCompileShader(shader);
+	GLint res;
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &res);
+	if (res == GL_FALSE) {
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &res);
+		char* buff = new char[res];
+		glGetShaderInfoLog(shader, res, &res, buff);
+		fprintf(stderr, "Error Shader %s: %s", name, buff);
+		delete[] buff;
+		glDeleteShader(shader);
+		return 0;
+	}
+	return shader;
+}
+void linkProgram(GLuint program) {
+	glLinkProgram(program);
+	GLint res;
+	glGetProgramiv(program, GL_LINK_STATUS, &res);
+	if (res == GL_FALSE) {
+		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &res);
+		char* buff = new char[res];
+		glGetProgramInfoLog(program, res, &res, buff);
+		fprintf(stderr, "Error Link: %s", buff);
+		delete[] buff;
+	}
+}
 
 
 ///////// fw decl
@@ -174,36 +212,9 @@ void GLmousecb(MouseEvent ev) {
 	RV::prevMouse.lasty = ev.posy;
 }
 
-//////////////////////////////////////////////////
-GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name = "") {
-	GLuint shader = glCreateShader(shaderType);
-	glShaderSource(shader, 1, &shaderStr, NULL);
-	glCompileShader(shader);
-	GLint res;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &res);
-	if (res == GL_FALSE) {
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &res);
-		char* buff = new char[res];
-		glGetShaderInfoLog(shader, res, &res, buff);
-		fprintf(stderr, "Error Shader %s: %s", name, buff);
-		delete[] buff;
-		glDeleteShader(shader);
-		return 0;
-	}
-	return shader;
-}
-void linkProgram(GLuint program) {
-	glLinkProgram(program);
-	GLint res;
-	glGetProgramiv(program, GL_LINK_STATUS, &res);
-	if (res == GL_FALSE) {
-		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &res);
-		char* buff = new char[res];
-		glGetProgramInfoLog(program, res, &res, buff);
-		fprintf(stderr, "Error Link: %s", buff);
-		delete[] buff;
-	}
-}
+#pragma endregion
+
+#pragma region OLD
 
 ////////////////////////////////////////////////// AXIS
 namespace Axis {
@@ -720,7 +731,7 @@ namespace ModelDragon
 {
 	GLuint modelVao;
 	GLuint modelVbo[4];
-	GLuint modelShaders[2];
+	GLuint modelShaders[3];
 	GLuint modelProgram;
 	glm::mat4 objMat = glm::mat4(1.f);
 
@@ -744,89 +755,39 @@ namespace ModelDragon
 	const char* model_vertShader =
 		"#version 330\n\
 	in vec3 in_Position;\n\
-	in vec3 in_Normal;\n\
-	in vec2 in_TexCoord;\n\
-	out vec4 vert_Normal;\n\
-	out vec4 fragPos;\n\
-	out vec2 texCoord;\n\
-	mat4 normalMat;\n\
 	uniform mat4 objMat;\n\
 	uniform mat4 mv_Mat;\n\
 	uniform mat4 mvpMat;\n\
 	void main() {\n\
-		normalMat = transpose(inverse(objMat));\n\
 		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
-		vert_Normal = normalMat * vec4(in_Normal, 0.0);\n\
-		fragPos = vec4(objMat * vec4(in_Position, 1.0));\n\
-		texCoord = in_TexCoord;\n\
 	}";
 	
+	const char* model_geomShader = 
+		"#version 330\n\
+		layout (triangles) in;\n\
+		layout (triangle_strip, max_vertices = 6) out;\n\
+		uniform float moveWTime;\n\
+		void main()\n\
+		{\n\
+			for(int i = 0; i < 3; i++) { \n\
+				vec4 offset = vec4(5.0,0.0,0.0,0.0);\n\
+				gl_Position = gl_in[i].gl_Position + offset;\n\
+				EmitVertex();\n\
+			}\n\
+			EndPrimitive();\n\
+			for(int i = 0; i < 3; i++) { \n\
+				gl_Position = gl_in[i].gl_Position + vec4(moveWTime, moveWTime, 0.0, 0.0); \n\
+				EmitVertex(); \n\
+			}\n\
+			EndPrimitive(); \n\
+	}";
+
 	const char* model_fragShader =
 		"#version 330\n\
-	in vec4 vert_Normal;\n\
-	in vec4 fragPos;\n\
 	out vec4 out_Color;\n\
 	uniform vec4 objColor;\n\
-	uniform vec4 dir_light; \n\
-	uniform vec4 ambient; \n\
-	uniform vec4 ambient_color; \n\
-	uniform vec4 diffuse; \n\
-	uniform vec4 diffuse_color; \n\
-	uniform vec4 specular; \n\
-	uniform vec4 specular_color; \n\
-	uniform vec4 viewPos; \n\
-	uniform float shininess;\n\
-	uniform bool have_ambient;\n\
-	uniform bool have_diffuse;\n\
-	uniform bool have_specular;\n\
-	// TEXTURE \n\
-	in vec2 texCoord; \n\
-	uniform sampler2D ourTexture; \n\
 	void main() {\n\
-		// Phong Shading\n\
-		// Ambient \n\
-		vec4 ambientComp = ambient_color * ambient; \n\
-		// Diffuse \n\
-		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * diffuse_color; \n\
-		// Specular \n\
-		vec4 viewDir = viewPos - fragPos;\n\
-		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
-		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
-		if(have_ambient && have_diffuse && have_specular)\n\
-		{\n\
-		out_Color = objColor * (ambientComp + diffuseComp + specularComp);\n\
-		}\n\
-		else if(have_ambient && have_diffuse)\n\
-		{\n\
-		out_Color = objColor * (ambientComp + diffuseComp);\n\
-		}\n\
-		else if(have_ambient && have_specular)\n\
-		{\n\
-		out_Color = objColor * (ambientComp + specularComp);\n\
-		}\n\
-		else if(have_diffuse && have_specular)\n\
-		{\n\
-		out_Color = objColor * (diffuseComp + specularComp);\n\
-		}\n\
-		else if(have_ambient)\n\
-		{\n\
-		out_Color = objColor * (ambientComp);\n\
-		}\n\
-		else if(have_diffuse)\n\
-		{\n\
-		out_Color = objColor * (diffuseComp);\n\
-		}\n\
-		else if(have_specular)\n\
-		{\n\
-		out_Color = objColor * (specularComp);\n\
-		}\n\
-		else\n\
-		{\n\
-		//out_Color = objColor;\n\
-		// TEXTURE\n\
-		vec4 textureColor = texture(ourTexture,texCoord);\n\
-		out_Color = textureColor * objColor * (ambientComp + diffuseComp);\n\
-		}\n\
+		out_Color = objColor;\n\
 	}";
 
 	void Init() {
@@ -848,7 +809,7 @@ namespace ModelDragon
 
 		// Uvs
 		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[2]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * uvs.size(), &uvs[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * uvs.size(), &uvs[0], GL_STATIC_DRAW);
 		glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
 		glEnableVertexAttribArray(2);
 		
@@ -861,14 +822,18 @@ namespace ModelDragon
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		
 		modelShaders[0] = compileShader(model_vertShader, GL_VERTEX_SHADER, "modelDragonVert");
-		modelShaders[1] = compileShader(model_fragShader, GL_FRAGMENT_SHADER, "modelDragonFrag");
+		modelShaders[1] = compileShader(model_geomShader, GL_GEOMETRY_SHADER, "modelDragonGeom");
+		modelShaders[2] = compileShader(model_fragShader, GL_FRAGMENT_SHADER, "modelDragonFrag");
 
 		modelProgram = glCreateProgram();
 		glAttachShader(modelProgram, modelShaders[0]);
 		glAttachShader(modelProgram, modelShaders[1]);
+		glAttachShader(modelProgram, modelShaders[2]);
+		
 		glBindAttribLocation(modelProgram, 0, "in_Position");
 		glBindAttribLocation(modelProgram, 1, "in_Normal");
 		glBindAttribLocation(modelProgram, 2, "in_TexCoord");
+		
 		linkProgram(modelProgram);
 	}
 
@@ -909,14 +874,15 @@ namespace ModelDragon
 		glDeleteProgram(modelProgram);
 		glDeleteShader(modelShaders[0]);
 		glDeleteShader(modelShaders[1]);
+		glDeleteShader(modelShaders[2]);
 
 		stbi_image_free(data);
 		glDeleteTextures(1, &texture);
 	}
 
-	void Render()
+	void Render(float dt)
 	{
-		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(dragon.pos[0], dragon.pos[1], dragon.pos[2]));
+		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(0.f, 5.f, 0.0f));
 		//glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
 		objMat = t;
 		
@@ -939,6 +905,10 @@ namespace ModelDragon
 		glUniform4f(glGetUniformLocation(modelProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
 		glUniform4f(glGetUniformLocation(modelProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
 		glUniform1f(glGetUniformLocation(modelProgram, "shininess"), wLight.shininess);
+		
+		moveWTime = cos(dt);
+		glUniform1f(glGetUniformLocation(modelProgram, "moveWTime"), moveWTime);
+		std::cout << moveWTime << std::endl;
 
 		glUniform1i(glGetUniformLocation(modelProgram, "have_ambient"), dragon.haveAmbient);
 		glUniform1i(glGetUniformLocation(modelProgram, "have_diffuse"), dragon.haveDiffuse);
@@ -983,13 +953,12 @@ namespace ModelSword
 	in vec3 in_Normal;\n\
 	out vec4 vert_Normal;\n\
 	out vec4 fragPos;\n\
-	mat4 normalMat;\n\
 	uniform mat4 objMat;\n\
 	uniform mat4 mv_Mat;\n\
 	uniform mat4 mvpMat;\n\
 	void main() {\n\
-		normalMat = transpose(inverse(objMat));\n\
-		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
+		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0); \n\
+		mat4 normalMat; \n\ = transpose(inverse(objMat));\n\
 		vert_Normal = normalMat * vec4(in_Normal, 0.0);\n\
 		fragPos = vec4(objMat * vec4(in_Position, 1.0));\n\
 	}";
@@ -1101,12 +1070,12 @@ namespace ModelSword
 		glDeleteShader(modelShaders[1]);
 	}
 
-	void Render()
+	void Render(float dt)
 	{
-		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(sword.pos[0], sword.pos[1], sword.pos[2]));
+		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(cos(sword.pos[0] * dt), sword.pos[1], sword.pos[2]));
 		glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
 		objMat = t * s;
-
+		
 		glBindVertexArray(modelVao);
 		glUseProgram(modelProgram);
 
@@ -1138,6 +1107,9 @@ namespace ModelSword
 	}
 }
 /////////////////////////////////////////////////
+
+#pragma endregion
+
 void GLinit(int width, int height) {
 	glViewport(0, 0, width, height);
 	glClearColor(0.2f, 0.2f, 0.2f, 1.f);
@@ -1150,6 +1122,8 @@ void GLinit(int width, int height) {
 
 	// Setup shaders & geometry
 	Axis::setupAxis();
+
+#pragma region OLD
 	Cube::setupCube();
 	LightCube::setupCube();
 	
@@ -1161,14 +1135,19 @@ void GLinit(int width, int height) {
 	ModelDragon::InitTexture();
 
 	// SWORD
-	ReadFile(ModelSword::vertices, ModelSword::uvs, ModelSword::normals, "res/espada.obj");
-	res = loadOBJ("res/espada.obj", ModelSword::vertices, ModelSword::uvs, ModelSword::normals);
+	ReadFile(ModelSword::vertices, ModelSword::uvs, ModelSword::normals, "res/pipe.obj");
+	res = loadOBJ("res/pipe.obj", ModelSword::vertices, ModelSword::uvs, ModelSword::normals);
 	ModelSword::Init();
 
 	/////////////////////////////////////////////////////
+
+#pragma endregion
 }
 void GLcleanup() {
 	Axis::cleanupAxis();
+
+#pragma region OLD
+
 	Cube::cleanupCube();
 	
 	/////////////////////////////////////////////////////TODO
@@ -1176,7 +1155,11 @@ void GLcleanup() {
 	ModelDragon::Clean();
 	ModelSword::Clean();
 	/////////////////////////////////////////////////////////
+
+#pragma endregion
 }
+
+#pragma region Dolly Effect
 
 // DOLLY FUNCTION
 void MoveCamera()
@@ -1194,6 +1177,8 @@ void MoveCamera()
 	}
 }
 
+#pragma endregion
+
 void GLrender(float dt) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1205,23 +1190,30 @@ void GLrender(float dt) {
 	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[0], glm::vec3(0.f, 1.f, 0.f));
 	
 	RV::_MVP = RV::_projection * RV::_modelView;
-	
+
 	// Get camera position
 	wPos = glm::vec4(0.f, 0.f, 0.f, 1.f);
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
+
 	
 	MoveCamera();	// dolly effect
 
 	Axis::drawAxis();
+	
+	float currentTime = ImGui::GetTime();	// GETTING TIME
+
+#pragma region OLD
 	Cube::DrawScenario();
 	LightCube::LightCube();
 
 	/////////////////////////////////////////////////////TODO
-	ModelDragon::Render();
-	ModelSword::Render();
 	
+	ModelSword::Render(currentTime);
+	ModelDragon::Render(currentTime);
 	/////////////////////////////////////////////////////////
+
+#pragma endregion
 
 	ImGui::Render();
 }
@@ -1283,7 +1275,7 @@ void GUI() {
 		ImGui::ShowTestWindow();
 	}
 	// .........................
-
+	
 	ImGui::End();
 
 	// Example code -- ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()

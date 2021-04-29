@@ -21,7 +21,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#include "Shader.h"
+#include "Model.h"
 
 ///////////////////// EXTERN FUNCTIONS
 extern bool loadOBJ(const char*
@@ -112,7 +112,8 @@ float width = 16.f;
 
 float moveWTime = 0.0f;
 
-Shader shader;
+Model simpleCube;
+Model sword;
 
 #pragma region PROFE
 
@@ -212,10 +213,6 @@ void GLmousecb(MouseEvent ev) {
 	RV::prevMouse.lasty = ev.posy;
 }
 
-#pragma endregion
-
-#pragma region OLD
-
 ////////////////////////////////////////////////// AXIS
 namespace Axis {
 	GLuint AxisVao;
@@ -312,6 +309,11 @@ void main() {\n\
 		glBindVertexArray(0);
 	}
 }
+
+#pragma endregion
+
+#pragma region OLD
+
 ////////////////////////////////////////////////// CUBE
 namespace Cube {
 	GLuint cubeVao;
@@ -734,7 +736,7 @@ namespace ModelDragon
 	GLuint modelShaders[3];
 	GLuint modelProgram;
 	glm::mat4 objMat = glm::mat4(1.f);
-
+	
 	std::vector< glm::vec3 > vertices;
 	std::vector< glm::vec2 > uvs;
 	std::vector< glm::vec3 > normals;
@@ -742,15 +744,6 @@ namespace ModelDragon
 	int width, height, nrChannels;
 	unsigned char* data;
 	unsigned int texture;
-
-	//GLubyte modelIdx[] = {	
-	//0, 1, 2, 3, UCHAR_MAX,
-	//4, 5, 6, 7, UCHAR_MAX,
-	//8, 9, 10, 11, UCHAR_MAX,
-	//12, 13, 14, 15, UCHAR_MAX,
-	//16, 17, 18, 19, UCHAR_MAX,
-	//20, 21, 22, 23, UCHAR_MAX
-	//};
 
 	const char* model_vertShader =
 		"#version 330\n\
@@ -787,7 +780,11 @@ namespace ModelDragon
 	out vec4 out_Color;\n\
 	uniform vec4 objColor;\n\
 	void main() {\n\
-		out_Color = objColor;\n\
+		if(mod(gl_FragCoord.x,5) > 0.5 && mod(gl_FragCoord.y,5) > 0.5)\n\
+		{\n\
+			discard;\n\
+		}\n\
+		out_Color = objColor; \n\
 	}";
 
 	void Init() {
@@ -908,12 +905,12 @@ namespace ModelDragon
 		
 		moveWTime = cos(dt);
 		glUniform1f(glGetUniformLocation(modelProgram, "moveWTime"), moveWTime);
-		std::cout << moveWTime << std::endl;
+		//std::cout << moveWTime << std::endl;
 
 		glUniform1i(glGetUniformLocation(modelProgram, "have_ambient"), dragon.haveAmbient);
 		glUniform1i(glGetUniformLocation(modelProgram, "have_diffuse"), dragon.haveDiffuse);
 		glUniform1i(glGetUniformLocation(modelProgram, "have_specular"), dragon.haveSpecular);
-		
+
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glUniform1i(glGetUniformLocation(modelProgram, "ourTexture"), 0);
@@ -1209,7 +1206,7 @@ void GLrender(float dt) {
 
 	/////////////////////////////////////////////////////TODO
 	
-	ModelSword::Render(currentTime);
+	//ModelSword::Render(currentTime);
 	ModelDragon::Render(currentTime);
 	/////////////////////////////////////////////////////////
 
@@ -1270,7 +1267,7 @@ void GUI() {
 			ImGui::SliderFloat("PosZ", &RV::panv[2], -20, -6);
 			ImGui::Checkbox("Dolly Effect", &moveCamera);
 		}
-
+		
 		/////////////////////////////////////////////////////////
 		ImGui::ShowTestWindow();
 	}

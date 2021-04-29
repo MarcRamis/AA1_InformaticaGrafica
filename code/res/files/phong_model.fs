@@ -1,4 +1,4 @@
-onst char* model_vertShader =
+const char* model_vertShader =
 		"#version 330\n\
 	in vec3 in_Position;\n\
 	in vec3 in_Normal;\n\

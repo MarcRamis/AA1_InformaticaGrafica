@@ -112,8 +112,8 @@ float width = 16.f;
 
 float moveWTime = 0.0f;
 
-Model simpleCube;
-Model sword;
+//Model simpleCube;
+//Model swordModel;
 
 #pragma region PROFE
 

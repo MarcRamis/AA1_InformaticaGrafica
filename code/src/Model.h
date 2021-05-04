@@ -18,7 +18,10 @@ public:
 	std::vector< glm::vec3 > normals;
 	
 	Shader shader;
-	Texture texture;
+	//Texture texture;
 	
 	Model();
+	Model(Shader _shader, const char* path);
+
+	~Model();
 };

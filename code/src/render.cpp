@@ -115,6 +115,8 @@ float moveWTime = 0.0f;
 //Model simpleCube;
 //Model swordModel;
 
+Model *simpleCube;
+
 #pragma region PROFE
 
 GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name = "") {
@@ -774,7 +776,7 @@ namespace ModelDragon
 			}\n\
 			EndPrimitive(); \n\
 	}";
-
+	
 	const char* model_fragShader =
 		"#version 330\n\
 	out vec4 out_Color;\n\
@@ -810,10 +812,6 @@ namespace ModelDragon
 		glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
 		glEnableVertexAttribArray(2);
 		
-		//glPrimitiveRestartIndex(UCHAR_MAX);
-		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, modelVbo[3]);
-		//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(modelIdx), modelIdx, GL_STATIC_DRAW);
-
 		glBindVertexArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -917,7 +915,7 @@ namespace ModelDragon
 		
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 		glDrawElements(GL_TRIANGLE_STRIP, uvs.size(), GL_UNSIGNED_INT, 0);
-
+		
 		glUseProgram(0);
 		glBindVertexArray(0);
 	}
@@ -1120,15 +1118,18 @@ void GLinit(int width, int height) {
 	// Setup shaders & geometry
 	Axis::setupAxis();
 
+	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj");
+	//ReadFile(ModelDragon::vertices, ModelDragon::uvs, ModelDragon::normals, "res/cube.obj");
+	//bool res = loadOBJ("res/cube.obj", ModelDragon::vertices, ModelDragon::uvs, ModelDragon::normals);
+	//ModelDragon::Init();
+	/*
 #pragma region OLD
 	Cube::setupCube();
 	LightCube::setupCube();
 	
 	// Setup models 
 	// DRAGON
-	ReadFile(ModelDragon::vertices, ModelDragon::uvs, ModelDragon::normals, "res/cube.obj");
-	bool res = loadOBJ("res/cube.obj", ModelDragon::vertices, ModelDragon::uvs, ModelDragon::normals);
-	ModelDragon::Init();
+	
 	ModelDragon::InitTexture();
 
 	// SWORD
@@ -1139,6 +1140,7 @@ void GLinit(int width, int height) {
 	/////////////////////////////////////////////////////
 
 #pragma endregion
+*/
 }
 void GLcleanup() {
 	Axis::cleanupAxis();
@@ -1207,9 +1209,14 @@ void GLrender(float dt) {
 	/////////////////////////////////////////////////////TODO
 	
 	//ModelSword::Render(currentTime);
-	ModelDragon::Render(currentTime);
+	//ModelDragon::Render(currentTime);
+	simpleCube->shader.Use();
+	simpleCube->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(simpleCube->objMat));
+	simpleCube->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	simpleCube->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+	simpleCube->shader.SetFloat("objColor", dragon.rgb[0], dragon.rgb[1], dragon.rgb[2], 1.f);
 	/////////////////////////////////////////////////////////
-
+	
 #pragma endregion
 
 	ImGui::Render();

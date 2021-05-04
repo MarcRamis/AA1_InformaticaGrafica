@@ -73,14 +73,24 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geo
     linkProgram(program);
 
     // Delete the shaders as they're linked into our program now and no longer necessary
-    glDeleteShader(vertex);
-    glDeleteShader(geometry);
-    glDeleteShader(fragment);
+    //glDeleteShader(vertex);
+    //glDeleteShader(geometry);
+    //glDeleteShader(fragment);
+}
+
+Shader::~Shader()
+{
+
 }
 
 void Shader::Use()
 {
     glUseProgram(program);
+}
+
+void Shader::SetMatrix(const std::string& name, int size, bool transpose, const float* value)
+{
+    glUniformMatrix4fv(glGetUniformLocation(program, name.c_str()), 1, transpose, value);
 }
 
 void Shader::SetFloat(const std::string& name, float val1, float val2, float val3, float val4) const

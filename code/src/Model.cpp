@@ -16,8 +16,8 @@ extern void ReadFile(std::vector < glm::vec3 >& out_vertices,
 Model::Model(Shader _shader, const char* path) : shader(_shader)
 {
 	// READ MODEL
-	ReadFile(vertices, uvs, normals, "res/cube.obj");
-	bool res = loadOBJ("res/cube.obj", vertices, uvs, normals);
+	ReadFile(vertices, uvs, normals, path);
+	bool res = loadOBJ(path, vertices, uvs, normals);
 	if (res) std::cout << "Model has been read" << std::endl;
 	else std::cout << "Model couldn't be read" << std::endl;
 	
@@ -52,5 +52,15 @@ Model::Model(Shader _shader, const char* path) : shader(_shader)
 
 Model::~Model()
 {
+	glDeleteBuffers(3, vbo);
+	glDeleteVertexArrays(1, &vao);
+}
 
+
+void Model::Draw()
+{
+	glBindVertexArray(vao);
+	glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+	glBindVertexArray(0);
+	glUseProgram(0);
 }

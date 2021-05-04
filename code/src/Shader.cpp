@@ -71,11 +71,11 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geo
     glBindAttribLocation(program, 2, "in_TexCoord");
     
     linkProgram(program);
-
+    
     // Delete the shaders as they're linked into our program now and no longer necessary
-    //glDeleteShader(vertex);
-    //glDeleteShader(geometry);
-    //glDeleteShader(fragment);
+    glDeleteShader(vertex);
+    glDeleteShader(geometry);
+    glDeleteShader(fragment);
 }
 
 Shader::~Shader()

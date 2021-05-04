@@ -24,4 +24,6 @@ public:
 	Model(Shader _shader, const char* path);
 
 	~Model();
+
+	void Draw();
 };

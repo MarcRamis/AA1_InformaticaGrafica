@@ -112,10 +112,8 @@ float width = 16.f;
 
 float moveWTime = 0.0f;
 
-//Model simpleCube;
-//Model swordModel;
-
 Model *simpleCube;
+//Shader dragonC;
 
 #pragma region PROFE
 
@@ -148,7 +146,6 @@ void linkProgram(GLuint program) {
 		delete[] buff;
 	}
 }
-
 
 ///////// fw decl
 namespace ImGui {
@@ -731,18 +728,22 @@ namespace LightCube {
 	}
 }
 ////////////////////////////////////////////////// MODEL DRAGON
+/*
 namespace ModelDragon
 {
-	GLuint modelVao;
-	GLuint modelVbo[4];
-	GLuint modelShaders[3];
-	GLuint modelProgram;
-	glm::mat4 objMat = glm::mat4(1.f);
+	Model model;
+	//GLuint modelVao;
+	//GLuint modelVbo[4];
+	//GLuint modelShaders[3];
 	
-	std::vector< glm::vec3 > vertices;
-	std::vector< glm::vec2 > uvs;
-	std::vector< glm::vec3 > normals;
-
+	Shader shader;
+	//GLuint modelProgram;
+	//glm::mat4 objMat = glm::mat4(1.f);
+	
+	//std::vector< glm::vec3 > vertices;
+	//std::vector< glm::vec2 > uvs;
+	//std::vector< glm::vec3 > normals;
+	  
 	int width, height, nrChannels;
 	unsigned char* data;
 	unsigned int texture;
@@ -790,33 +791,38 @@ namespace ModelDragon
 	}";
 
 	void Init() {
-		glGenVertexArrays(1, &modelVao);
-		glBindVertexArray(modelVao);
-		glGenBuffers(3, modelVbo);
-
-		// Vertices
-		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[0]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
-		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(0);
-
-		// Normals
-		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), &normals[0], GL_STATIC_DRAW);
-		glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(1);
-
-		// Uvs
-		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[2]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * uvs.size(), &uvs[0], GL_STATIC_DRAW);
-		glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(2);
 		
-		glBindVertexArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		model = Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj");
 		
-		modelShaders[0] = compileShader(model_vertShader, GL_VERTEX_SHADER, "modelDragonVert");
+		//glGenVertexArrays(1, &modelVao);
+		//glBindVertexArray(modelVao);
+		//glGenBuffers(3, modelVbo);
+		//
+		//// Vertices
+		//glBindBuffer(GL_ARRAY_BUFFER, modelVbo[0]);
+		//glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+		//glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		//glEnableVertexAttribArray(0);
+		//
+		//// Normals
+		//glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
+		//glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), &normals[0], GL_STATIC_DRAW);
+		//glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		//glEnableVertexAttribArray(1);
+		//
+		//// Uvs
+		//glBindBuffer(GL_ARRAY_BUFFER, modelVbo[2]);
+		//glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * uvs.size(), &uvs[0], GL_STATIC_DRAW);
+		//glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+		//glEnableVertexAttribArray(2);
+		//
+		//glBindVertexArray(0);
+		//glBindBuffer(GL_ARRAY_BUFFER, 0);
+		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		//
+		//shader = Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs");
+
+		/*modelShaders[0] = compileShader(model_vertShader, GL_VERTEX_SHADER, "modelDragonVert");
 		modelShaders[1] = compileShader(model_geomShader, GL_GEOMETRY_SHADER, "modelDragonGeom");
 		modelShaders[2] = compileShader(model_fragShader, GL_FRAGMENT_SHADER, "modelDragonFrag");
 
@@ -863,13 +869,13 @@ namespace ModelDragon
 	}
 
 	void Clean() {
-		glDeleteBuffers(3, modelVbo);
-		glDeleteVertexArrays(1, &modelVao);
+		//glDeleteBuffers(3, modelVbo);
+		//glDeleteVertexArrays(1, &modelVao);
 
-		glDeleteProgram(modelProgram);
-		glDeleteShader(modelShaders[0]);
-		glDeleteShader(modelShaders[1]);
-		glDeleteShader(modelShaders[2]);
+		//glDeleteProgram(modelProgram);
+		//glDeleteShader(modelShaders[0]);
+		//glDeleteShader(modelShaders[1]);
+		//glDeleteShader(modelShaders[2]);
 
 		stbi_image_free(data);
 		glDeleteTextures(1, &texture);
@@ -879,47 +885,49 @@ namespace ModelDragon
 	{
 		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(0.f, 5.f, 0.0f));
 		//glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
-		objMat = t;
+		model.objMat = t;
 		
-		glBindVertexArray(modelVao);
-		glUseProgram(modelProgram);
+		glBindVertexArray(model.vao);
+		glUseProgram(shader.program);
 
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+		glUniformMatrix4fv(glGetUniformLocation(shader.program, "objMat"), 1, GL_FALSE, glm::value_ptr(model.objMat));
+		glUniformMatrix4fv(glGetUniformLocation(shader.program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+		glUniformMatrix4fv(glGetUniformLocation(shader.program, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
-		glUniform4f(glGetUniformLocation(modelProgram, "objColor"), dragon.rgb[0], dragon.rgb[1], dragon.rgb[2], 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "ambient_color"), wLight.ambient_color[0], wLight.ambient_color[1], wLight.ambient_color[2], 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "diffuse_color"), wLight.diffuse_color[0], wLight.diffuse_color[1], wLight.diffuse_color[2], 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "specular_color"), wLight.specular_color[0], wLight.specular_color[1], wLight.specular_color[2], 1.f);
-
-		glUniform4f(glGetUniformLocation(modelProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
-
-		glUniform4f(glGetUniformLocation(modelProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
-		glUniform1f(glGetUniformLocation(modelProgram, "shininess"), wLight.shininess);
+		glUniform4f(glGetUniformLocation(shader.program, "objColor"), dragon.rgb[0], dragon.rgb[1], dragon.rgb[2], 1.f);
+		//glUniform4f(glGetUniformLocation(shader.program, "ambient_color"), wLight.ambient_color[0], wLight.ambient_color[1], wLight.ambient_color[2], 1.f);
+		//glUniform4f(glGetUniformLocation(shader.program, "diffuse_color"), wLight.diffuse_color[0], wLight.diffuse_color[1], wLight.diffuse_color[2], 1.f);
+		//glUniform4f(glGetUniformLocation(shader.program, "specular_color"), wLight.specular_color[0], wLight.specular_color[1], wLight.specular_color[2], 1.f);
+		//
+		//glUniform4f(glGetUniformLocation(shader.program, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
+		//glUniform4f(glGetUniformLocation(shader.program, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
+		//glUniform4f(glGetUniformLocation(shader.program, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
+		//
+		//glUniform4f(glGetUniformLocation(shader.program, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
+		//glUniform4f(glGetUniformLocation(shader.program, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
+		//glUniform1f(glGetUniformLocation(shader.program, "shininess"), wLight.shininess);
 		
 		moveWTime = cos(dt);
-		glUniform1f(glGetUniformLocation(modelProgram, "moveWTime"), moveWTime);
+		glUniform1f(glGetUniformLocation(shader.program, "moveWTime"), moveWTime);
 		//std::cout << moveWTime << std::endl;
 
-		glUniform1i(glGetUniformLocation(modelProgram, "have_ambient"), dragon.haveAmbient);
-		glUniform1i(glGetUniformLocation(modelProgram, "have_diffuse"), dragon.haveDiffuse);
-		glUniform1i(glGetUniformLocation(modelProgram, "have_specular"), dragon.haveSpecular);
+		glUniform1i(glGetUniformLocation(shader.program, "have_ambient"), dragon.haveAmbient);
+		glUniform1i(glGetUniformLocation(shader.program, "have_diffuse"), dragon.haveDiffuse);
+		glUniform1i(glGetUniformLocation(shader.program, "have_specular"), dragon.haveSpecular);
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
-		glUniform1i(glGetUniformLocation(modelProgram, "ourTexture"), 0);
+		glUniform1i(glGetUniformLocation(shader.program, "ourTexture"), 0);
 		
-		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
-		glDrawElements(GL_TRIANGLE_STRIP, uvs.size(), GL_UNSIGNED_INT, 0);
+		//DrawArrays(GL_TRIANGLES, 0, vertices.size());
+		//glDrawElements(GL_TRIANGLE_STRIP, uvs.size(), GL_UNSIGNED_INT, 0);
 		
 		glUseProgram(0);
 		glBindVertexArray(0);
 	}
 }
+
+*/
 ///////////////////////////////////////////////// MODEL SWORD
 namespace ModelSword
 {
@@ -1151,7 +1159,7 @@ void GLcleanup() {
 	
 	/////////////////////////////////////////////////////TODO
 	LightCube::cleanupCube();
-	ModelDragon::Clean();
+	//ModelDragon::Clean();
 	ModelSword::Clean();
 	/////////////////////////////////////////////////////////
 
@@ -1194,7 +1202,6 @@ void GLrender(float dt) {
 	wPos = glm::vec4(0.f, 0.f, 0.f, 1.f);
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
-
 	
 	MoveCamera();	// dolly effect
 
@@ -1207,14 +1214,14 @@ void GLrender(float dt) {
 	LightCube::LightCube();
 
 	/////////////////////////////////////////////////////TODO
-	
-	//ModelSword::Render(currentTime);
-	//ModelDragon::Render(currentTime);
 	simpleCube->shader.Use();
 	simpleCube->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(simpleCube->objMat));
 	simpleCube->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 	simpleCube->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 	simpleCube->shader.SetFloat("objColor", dragon.rgb[0], dragon.rgb[1], dragon.rgb[2], 1.f);
+	moveWTime = cos(currentTime);
+	simpleCube->shader.SetFloat("moveWTime", moveWTime);
+	simpleCube->Draw();
 	/////////////////////////////////////////////////////////
 	
 #pragma endregion

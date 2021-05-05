@@ -13,7 +13,7 @@ extern void ReadFile(std::vector < glm::vec3 >& out_vertices,
 	std::vector < glm::vec2 >& out_uvs,
 	std::vector < glm::vec3 >& out_normals, std::string path);
 
-Model::Model(Shader _shader, const char* path) : shader(_shader)
+Model::Model(Shader _shader, const char* path, ObjectParameters objParameters) : shader(_shader), obj(objParameters)
 {
 	// READ MODEL
 	ReadFile(vertices, uvs, normals, path);
@@ -62,5 +62,5 @@ void Model::Draw()
 	glBindVertexArray(vao);
 	glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 	glBindVertexArray(0);
-	glUseProgram(0);
+	//glUseProgram(0);
 }

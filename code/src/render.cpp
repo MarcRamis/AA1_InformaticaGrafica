@@ -1060,15 +1060,13 @@ void GLinit(int width, int height) {
 		ObjectParameters( glm::vec3(1.f,1.f,1.f),glm::vec4(0.4f,1.f,1.f,1.f), true,true,false));
 
 	// SWORD
+	sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", nullptr), "res/espada.obj",
+		ObjectParameters(glm::vec3(-7.f, 2.f, -7.f), glm::vec4(0.4f, 1.f, 1.f,1.f), true, true, false));
+		
+	// SCENARIO
+	scenario = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", nullptr), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(0.5f, 0.5f, 0.5f,1.f), true, true, false));
 	
-	//sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", nullptr), "res/espada.obj",
-	//	ObjectParameters(glm::vec3(-7.f, 2.f, -7.f), glm::vec4(0.4f, 1.f, 1.f,1.f), true, true, false));
-	//	
-	//// SCENARIO
-	//
-	//scenario = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", nullptr), "res/cube.obj",
-	//	ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(0.5f, 0.5f, 0.5f,1.f), true, true, false));
-	//
 }
 void GLcleanup() {
 	Axis::cleanupAxis();
@@ -1135,18 +1133,18 @@ void GLrender(float dt) {
 	// SIMPLE CUBE
 	#pragma region Simple Cube
 	simpleCube->shader.Use();
-
+	
 	// Translate position
 	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
 	simpleCube->objMat = t;
 	
-	// Model View on scene
 	simpleCube->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(simpleCube->objMat));
 	simpleCube->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 	simpleCube->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
-	simpleCube->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
 	simpleCube->shader.SetFloat("objColor", simpleCube->obj.color.x, simpleCube->obj.color.y, simpleCube->obj.color.z, simpleCube->obj.color.w);
+
+	simpleCube->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
 	simpleCube->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
 	simpleCube->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
 	simpleCube->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
@@ -1154,16 +1152,17 @@ void GLrender(float dt) {
 	simpleCube->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength,1.f);
 	simpleCube->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength,1.f);
 	simpleCube->shader.SetFloat("shininess",phong.shininess);
+	
 	simpleCube->shader.SetFloat("viewPos",wPos.x, wPos.y, wPos.z, 1.f);
+	
 	moveWTime = cos(currentTime);
 	simpleCube->shader.SetFloat("moveWTime", moveWTime);
-	
+
 	simpleCube->Draw();
 
 #pragma endregion
 	
 	// SWORD
-	/*
 	#pragma region Sword
 
 	sword->shader.Use();
@@ -1176,15 +1175,23 @@ void GLrender(float dt) {
 	sword->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(sword->objMat));
 	sword->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 	sword->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+
+	sword->shader.SetFloat("objColor", sword->obj.color.x, sword->obj.color.y, sword->obj.color.z, sword->obj.color.w);
 	
-	sword->shader.SetFloat("objColor", sword->obj.color.x, sword->obj.color.y, sword->obj.color.z, 1.f);
-	
+	sword->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	sword->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	sword->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	sword->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+	sword->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	sword->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	sword->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	sword->shader.SetFloat("shininess", phong.shininess);
+
 	sword->Draw();
 
 #pragma endregion
-*/
+
 	// SCENARIO
-	/*
 	#pragma region Scenario
 
 	scenario->shader.Use();
@@ -1197,13 +1204,22 @@ void GLrender(float dt) {
 	scenario->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 	scenario->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
-	scenario->shader.SetFloat("objColor", scenario->obj.color.x, scenario->obj.color.y, scenario->obj.color.z, 1.f);
+	scenario->shader.SetFloat("objColor", scenario->obj.color.x, scenario->obj.color.y, scenario->obj.color.z, scenario->obj.color.w);
+
+	scenario->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	scenario->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	scenario->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	scenario->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+	scenario->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	scenario->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	scenario->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	scenario->shader.SetFloat("shininess", phong.shininess);
+
+	scenario->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
 
 	scenario->Draw();
 	
 #pragma endregion
-*/
-
 	ImGui::Render();
 }
 
@@ -1233,7 +1249,7 @@ void GUI() {
 		if (ImGui::TreeNode("Scenario"))
 		{
 			ImGui::ColorEdit4("Object Color", glm::value_ptr(scenario->obj.color));
-			ImGui::Checkbox("Active ambient", &scenario->obj.haveAmbient);         
+			ImGui::Checkbox("Active ambient", &scenario->obj.haveAmbient);
 			ImGui::Checkbox("Active diffuse", &scenario->obj.haveDiffuse);
 			ImGui::Checkbox("Active specular", &scenario->obj.haveSpecular);
 
@@ -1242,7 +1258,7 @@ void GUI() {
 
 		if (ImGui::TreeNode("Simple Cube"))
 		{
-			ImGui::DragFloat3("Object Position", glm::value_ptr(simpleCube->obj.pos), 0.f, 1.f);
+			ImGui::DragFloat3("Translate", glm::value_ptr(simpleCube->obj.pos), 0.f, 1.f);
 			ImGui::ColorEdit4("Object Color", glm::value_ptr(simpleCube->obj.color));
 			ImGui::Checkbox("Active ambient", &simpleCube->obj.haveAmbient);
 			ImGui::Checkbox("Active diffuse", &simpleCube->obj.haveDiffuse);
@@ -1250,10 +1266,10 @@ void GUI() {
 
 			ImGui::TreePop();
 		}
-		
+
 		if (ImGui::TreeNode("Sword"))
 		{
-			ImGui::DragFloat3("Object Position", glm::value_ptr(sword->obj.pos), 0.f, 1.f);
+			ImGui::DragFloat3("Translate", glm::value_ptr(sword->obj.pos), 0.f, 1.f);
 			ImGui::ColorEdit4("Object Color", glm::value_ptr(sword->obj.color));
 			ImGui::Checkbox("Active ambient", &sword->obj.haveAmbient);
 			ImGui::Checkbox("Active diffuse", &sword->obj.haveDiffuse);
@@ -1272,7 +1288,6 @@ void GUI() {
 		}
 		
 		/////////////////////////////////////////////////////////
-		ImGui::ShowTestWindow();
 	}
 	// .........................
 	

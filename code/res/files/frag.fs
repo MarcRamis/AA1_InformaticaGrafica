@@ -25,7 +25,6 @@
 	uniform vec4 specular_color;
 	uniform float shininess;
 	
-	
 	void main() 
 	{
 		// ----- PHONG SHADING

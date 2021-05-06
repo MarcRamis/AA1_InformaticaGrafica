@@ -42,11 +42,11 @@ public:
 	std::vector< glm::vec3 > normals;
 	
 	Shader shader;
-	//Texture texture;
+	Texture texture;
 	ObjectParameters obj;
 
 	Model();
-	Model(Shader _shader, const char* path, ObjectParameters objParameters);
+	Model(Shader _shader, const char* path, ObjectParameters objParameters, Texture _texture);
 
 	~Model();
 

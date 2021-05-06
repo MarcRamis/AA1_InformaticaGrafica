@@ -18,8 +18,8 @@
 
 #include <glm/gtx/string_cast.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+//#define STB_IMAGE_IMPLEMENTATION
+//#include "stb_image.h"
 
 #include "Model.h"
 
@@ -237,811 +237,6 @@ void main() {\n\
 
 #pragma endregion
 
-#pragma region OLD
-
-/*
-////////////////////////////////////////////////// CUBE
-namespace Cube {
-	GLuint cubeVao;
-	GLuint cubeVbo[3];
-	GLuint cubeShaders[2];
-	GLuint cubeProgram;
-	glm::mat4 objMat = glm::mat4(1.f);
-
-	extern const float halfW = 0.5f;
-	int numVerts = 24 + 6; // 4 vertex/face * 6 faces + 6 PRIMITIVE RESTART
-
-						   //   4---------7
-						   //  /|        /|
-						   // / |       / |
-						   //5---------6  |
-						   //|  0------|--3
-						   //| /       | /
-						   //|/        |/
-						   //1---------2
-	glm::vec3 verts[] = {
-		glm::vec3(-halfW, -halfW, -halfW),
-		glm::vec3(-halfW, -halfW,  halfW),
-		glm::vec3(halfW, -halfW,  halfW),
-		glm::vec3(halfW, -halfW, -halfW),
-		glm::vec3(-halfW,  halfW, -halfW),
-		glm::vec3(-halfW,  halfW,  halfW),
-		glm::vec3(halfW,  halfW,  halfW),
-		glm::vec3(halfW,  halfW, -halfW)
-	};
-	glm::vec3 norms[] = {
-		glm::vec3(0.f, -1.f,  0.f),
-		glm::vec3(0.f,  1.f,  0.f),
-		glm::vec3(-1.f,  0.f,  0.f),
-		glm::vec3(1.f,  0.f,  0.f),
-		glm::vec3(0.f,  0.f, -1.f),
-		glm::vec3(0.f,  0.f,  1.f)
-	};
-
-	glm::vec3 cubeVerts[] = {
-		verts[1], verts[0], verts[2], verts[3],
-		verts[5], verts[6], verts[4], verts[7],
-		verts[1], verts[5], verts[0], verts[4],
-		verts[2], verts[3], verts[6], verts[7],
-		verts[0], verts[4], verts[3], verts[7],
-		verts[1], verts[2], verts[5], verts[6]
-	};
-	glm::vec3 cubeNorms[] = {
-		norms[0], norms[0], norms[0], norms[0],
-		norms[1], norms[1], norms[1], norms[1],
-		norms[2], norms[2], norms[2], norms[2],
-		norms[3], norms[3], norms[3], norms[3],
-		norms[4], norms[4], norms[4], norms[4],
-		norms[5], norms[5], norms[5], norms[5]
-	};
-	GLubyte cubeIdx[] = {
-		0, 1, 2, 3, UCHAR_MAX,
-		4, 5, 6, 7, UCHAR_MAX,
-		8, 9, 10, 11, UCHAR_MAX,
-		12, 13, 14, 15, UCHAR_MAX,
-		16, 17, 18, 19, UCHAR_MAX,
-		20, 21, 22, 23, UCHAR_MAX
-	};
-
-	const char* cube_vertShader =
-		"#version 330\n\
-	in vec3 in_Position;\n\
-	in vec3 in_Normal;\n\
-	out vec4 vert_Normal;\n\
-	out vec4 fragPos;\n\
-	mat4 normalMat;\n\
-	uniform mat4 objMat;\n\
-	uniform mat4 mv_Mat;\n\
-	uniform mat4 mvpMat;\n\
-	void main() {\n\
-		normalMat = transpose(inverse(objMat));\n\
-		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
-		vert_Normal = normalMat * vec4(in_Normal, 0.0);\n\
-		fragPos = vec4(objMat * vec4(in_Position, 1.0));\n\
-	}";
-
-	const char* cube_fragShader =
-		"#version 330\n\
-	in vec4 vert_Normal;\n\
-	in vec4 fragPos;\n\
-	out vec4 out_Color;\n\
-	uniform vec4 objColor;\n\
-	uniform vec4 dir_light; \n\
-	uniform vec4 ambient; \n\
-	uniform vec4 ambient_color; \n\
-	uniform vec4 diffuse; \n\
-	uniform vec4 diffuse_color; \n\
-	uniform vec4 specular; \n\
-	uniform vec4 specular_color; \n\
-	uniform vec4 viewPos; \n\
-	uniform float shininess;\n\
-	uniform bool have_ambient;\n\
-	uniform bool have_diffuse;\n\
-	uniform bool have_specular;\n\
-	void main() {\n\
-		vec4 ambientComp = ambient_color * ambient; \n\
-		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * diffuse_color; \n\
-		vec4 viewDir = viewPos - fragPos;\n\
-		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
-		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
-		if(have_ambient && have_diffuse && have_specular)\n\
-		{\n\
-		out_Color = objColor * (ambientComp + diffuseComp + specularComp);\n\
-		}\n\
-		else if(have_ambient && have_diffuse)\n\
-		{\n\
-		out_Color = objColor * (ambientComp + diffuseComp);\n\
-		}\n\
-		else if(have_ambient && have_specular)\n\
-		{\n\
-		out_Color = objColor * (ambientComp + specularComp);\n\
-		}\n\
-		else if(have_diffuse && have_specular)\n\
-		{\n\
-		out_Color = objColor * (diffuseComp + specularComp);\n\
-		}\n\
-		else if(have_ambient)\n\
-		{\n\
-		out_Color = objColor * (ambientComp);\n\
-		}\n\
-		else if(have_diffuse)\n\
-		{\n\
-		out_Color = objColor * (diffuseComp);\n\
-		}\n\
-		else if(have_specular)\n\
-		{\n\
-		out_Color = objColor * (specularComp);\n\
-		}\n\
-		else\n\
-		{\n\
-		out_Color = objColor;\n\
-		}\n\
-	}";
-	
-	void setupCube() {
-		glGenVertexArrays(1, &cubeVao);
-		glBindVertexArray(cubeVao);
-		glGenBuffers(3, cubeVbo);
-
-		glBindBuffer(GL_ARRAY_BUFFER, cubeVbo[0]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVerts), cubeVerts, GL_STATIC_DRAW);
-		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(0);
-
-		glBindBuffer(GL_ARRAY_BUFFER, cubeVbo[1]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(cubeNorms), cubeNorms, GL_STATIC_DRAW);
-		glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(1);
-
-		glPrimitiveRestartIndex(UCHAR_MAX);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubeVbo[2]);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cubeIdx), cubeIdx, GL_STATIC_DRAW);
-
-		glBindVertexArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-		cubeShaders[0] = compileShader(cube_vertShader, GL_VERTEX_SHADER, "cubeVert");
-		cubeShaders[1] = compileShader(cube_fragShader, GL_FRAGMENT_SHADER, "cubeFrag");
-
-		cubeProgram = glCreateProgram();
-		glAttachShader(cubeProgram, cubeShaders[0]);
-		glAttachShader(cubeProgram, cubeShaders[1]);
-		glBindAttribLocation(cubeProgram, 0, "in_Position");
-		glBindAttribLocation(cubeProgram, 1, "in_Normal");
-		linkProgram(cubeProgram);
-	}
-	void cleanupCube() {
-		glDeleteBuffers(3, cubeVbo);
-		glDeleteVertexArrays(1, &cubeVao);
-
-		glDeleteProgram(cubeProgram);
-		glDeleteShader(cubeShaders[0]);
-		glDeleteShader(cubeShaders[1]);
-	}
-	void updateCube(const glm::mat4& transform) {
-		objMat = transform;
-	}
-	void DrawScenario() {
-		glEnable(GL_PRIMITIVE_RESTART);
-		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(0.0f, -0.6f, 0.0f));
-		glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(20.0f, 1.0f, 20.0f));
-		objMat = t * s;
-
-		glBindVertexArray(cubeVao);
-		glUseProgram(cubeProgram);
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-
-		glUniform4f(glGetUniformLocation(cubeProgram, "objColor"), scenario.rgb[0], scenario.rgb[1], scenario.rgb[2], 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "ambient_color"), wLight.ambient_color[0], wLight.ambient_color[1], wLight.ambient_color[2], 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse_color"), wLight.diffuse_color[0], wLight.diffuse_color[1], wLight.diffuse_color[2], 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "specular_color"), wLight.specular_color[0], wLight.specular_color[1], wLight.specular_color[2], 1.f);
-
-		glUniform4f(glGetUniformLocation(cubeProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
-
-		glUniform4f(glGetUniformLocation(cubeProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
-		glUniform1f(glGetUniformLocation(cubeProgram, "shininess"), wLight.shininess);
-
-		glUniform1i(glGetUniformLocation(cubeProgram, "have_ambient"), scenario.haveAmbient);
-		glUniform1i(glGetUniformLocation(cubeProgram, "have_diffuse"), scenario.haveDiffuse);
-		glUniform1i(glGetUniformLocation(cubeProgram, "have_specular"), scenario.haveSpecular);
-
-		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-
-		t = glm::translate(glm::mat4(), glm::vec3(3.0f, 5.0f, 3.0f));
-		objMat = t ;
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-
-		t = glm::translate(glm::mat4(), glm::vec3(3.0f, 5.0f, 8.0f));
-		s = glm::scale(glm::mat4(), glm::vec3(1.0f, 10.0f, 1.0f));
-		objMat = t * s;
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-
-		t = glm::translate(glm::mat4(), glm::vec3(4.0f, 2.0f, 8.0f));
-		s = glm::scale(glm::mat4(), glm::vec3(1.0f, 6.0f, 1.0f));
-		objMat = t * s;
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-
-		t = glm::translate(glm::mat4(), glm::vec3(4.0f, 2.0f, 7.0f));
-		s = glm::scale(glm::mat4(), glm::vec3(1.0f, 6.0f, 1.0f));
-		objMat = t * s;
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-
-		t = glm::translate(glm::mat4(), glm::vec3(-7.0f, 1.0f, -7.0f));
-		s = glm::scale(glm::mat4(), glm::vec3(2.0f, 2.0f, 5.0f));
-		objMat = t * s;
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-
-		for (size_t i = 0; i < 5; i++)
-		{
-			t = glm::translate(glm::mat4(), glm::vec3(i * 3, 2.0f, -10.0f));
-			objMat = t;
-			glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-			glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-		}
-
-		glUseProgram(0);
-		glBindVertexArray(0);
-
-		glDisable(GL_PRIMITIVE_RESTART);
-	}
-}
-////////////////////////////////////////////////// LIGHT CUBE
-namespace LightCube {
-	GLuint cubeVao;
-	GLuint cubeVbo[3];
-	GLuint cubeShaders[2];
-	GLuint cubeProgram;
-	glm::mat4 objMat = glm::mat4(1.f);
-
-	extern const float halfW = 0.5f;
-	int numVerts = 24 + 6; // 4 vertex/face * 6 faces + 6 PRIMITIVE RESTART
-
-						   //   4---------7
-						   //  /|        /|
-						   // / |       / |
-						   //5---------6  |
-						   //|  0------|--3
-						   //| /       | /
-						   //|/        |/
-						   //1---------2
-	glm::vec3 verts[] = {
-		glm::vec3(-halfW, -halfW, -halfW),
-		glm::vec3(-halfW, -halfW,  halfW),
-		glm::vec3(halfW, -halfW,  halfW),
-		glm::vec3(halfW, -halfW, -halfW),
-		glm::vec3(-halfW,  halfW, -halfW),
-		glm::vec3(-halfW,  halfW,  halfW),
-		glm::vec3(halfW,  halfW,  halfW),
-		glm::vec3(halfW,  halfW, -halfW)
-	};
-	glm::vec3 norms[] = {
-		glm::vec3(0.f, -1.f,  0.f),
-		glm::vec3(0.f,  1.f,  0.f),
-		glm::vec3(-1.f,  0.f,  0.f),
-		glm::vec3(1.f,  0.f,  0.f),
-		glm::vec3(0.f,  0.f, -1.f),
-		glm::vec3(0.f,  0.f,  1.f)
-	};
-
-	glm::vec3 cubeVerts[] = {
-		verts[1], verts[0], verts[2], verts[3],
-		verts[5], verts[6], verts[4], verts[7],
-		verts[1], verts[5], verts[0], verts[4],
-		verts[2], verts[3], verts[6], verts[7],
-		verts[0], verts[4], verts[3], verts[7],
-		verts[1], verts[2], verts[5], verts[6]
-	};
-	glm::vec3 cubeNorms[] = {
-		norms[0], norms[0], norms[0], norms[0],
-		norms[1], norms[1], norms[1], norms[1],
-		norms[2], norms[2], norms[2], norms[2],
-		norms[3], norms[3], norms[3], norms[3],
-		norms[4], norms[4], norms[4], norms[4],
-		norms[5], norms[5], norms[5], norms[5]
-	};
-	GLubyte cubeIdx[] = {
-		0, 1, 2, 3, UCHAR_MAX,
-		4, 5, 6, 7, UCHAR_MAX,
-		8, 9, 10, 11, UCHAR_MAX,
-		12, 13, 14, 15, UCHAR_MAX,
-		16, 17, 18, 19, UCHAR_MAX,
-		20, 21, 22, 23, UCHAR_MAX
-	};
-
-	const char* cube_vertShader =
-		"#version 330\n\
-	in vec3 in_Position;\n\
-	in vec3 in_Normal;\n\
-	out vec4 vert_Normal;\n\
-	out vec3 vert_wPos;\n\
-	uniform mat4 objMat;\n\
-	uniform mat4 mv_Mat;\n\
-	uniform mat4 mvpMat;\n\
-	void main() {\n\
-		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
-		vert_Normal = objMat * vec4(in_Normal, 0.0);\n\
-	}";
-
-	const char* cube_fragShader =
-		"#version 330\n\
-	in vec4 vert_Normal;\n\
-	out vec4 out_Color;\n\
-	uniform mat4 mv_Mat;\n\
-	uniform vec4 objColor;\n\
-	uniform vec4 ambient_color;\n\
-	uniform vec4 diffuse_color;\n\
-	void main() {\n\
-		out_Color = objColor * (ambient_color * diffuse_color);\n\
-	}";
-
-	void setupCube() {
-		glGenVertexArrays(1, &cubeVao);
-		glBindVertexArray(cubeVao);
-		glGenBuffers(3, cubeVbo);
-
-		glBindBuffer(GL_ARRAY_BUFFER, cubeVbo[0]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVerts), cubeVerts, GL_STATIC_DRAW);
-		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(0);
-
-		glBindBuffer(GL_ARRAY_BUFFER, cubeVbo[1]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(cubeNorms), cubeNorms, GL_STATIC_DRAW);
-		glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(1);
-
-		glPrimitiveRestartIndex(UCHAR_MAX);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubeVbo[2]);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cubeIdx), cubeIdx, GL_STATIC_DRAW);
-
-		glBindVertexArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-		cubeShaders[0] = compileShader(cube_vertShader, GL_VERTEX_SHADER, "cubeVert");
-		cubeShaders[1] = compileShader(cube_fragShader, GL_FRAGMENT_SHADER, "cubeFrag");
-
-		cubeProgram = glCreateProgram();
-		glAttachShader(cubeProgram, cubeShaders[0]);
-		glAttachShader(cubeProgram, cubeShaders[1]);
-		glBindAttribLocation(cubeProgram, 0, "in_Position");
-		glBindAttribLocation(cubeProgram, 1, "in_Normal");
-		linkProgram(cubeProgram);
-	}
-	void cleanupCube() {
-		glDeleteBuffers(3, cubeVbo);
-		glDeleteVertexArrays(1, &cubeVao);
-
-		glDeleteProgram(cubeProgram);
-		glDeleteShader(cubeShaders[0]);
-		glDeleteShader(cubeShaders[1]);
-	}
-	void updateCube(const glm::mat4& transform) {
-		objMat = transform;
-	}
-
-	void LightCube()
-	{
-		glEnable(GL_PRIMITIVE_RESTART);
-		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2]));
-		objMat = t;
-
-		glBindVertexArray(cubeVao);
-		glUseProgram(cubeProgram);
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
-		glUniformMatrix4fv(glGetUniformLocation(cubeProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-
-		glUniform4f(glGetUniformLocation(cubeProgram, "ambient_color"), wLight.ambient_color[0], wLight.ambient_color[1], wLight.ambient_color[2], 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "diffuse_color"), wLight.diffuse_color[0], wLight.diffuse_color[1], wLight.diffuse_color[2], 1.f);
-		glUniform4f(glGetUniformLocation(cubeProgram, "objColor"), 1.f, 1.f, 1.f, 1.f);
-
-		glDrawElements(GL_TRIANGLE_STRIP, numVerts, GL_UNSIGNED_BYTE, 0);
-
-		glUseProgram(0);
-		glBindVertexArray(0);
-
-		glDisable(GL_PRIMITIVE_RESTART);
-	}
-}
-////////////////////////////////////////////////// MODEL DRAGON
-/*
-namespace ModelDragon
-{
-	Model model;
-	//GLuint modelVao;
-	//GLuint modelVbo[4];
-	//GLuint modelShaders[3];
-	
-	Shader shader;
-	//GLuint modelProgram;
-	//glm::mat4 objMat = glm::mat4(1.f);
-	
-	//std::vector< glm::vec3 > vertices;
-	//std::vector< glm::vec2 > uvs;
-	//std::vector< glm::vec3 > normals;
-	  
-	int width, height, nrChannels;
-	unsigned char* data;
-	unsigned int texture;
-
-	const char* model_vertShader =
-		"#version 330\n\
-	in vec3 in_Position;\n\
-	uniform mat4 objMat;\n\
-	uniform mat4 mv_Mat;\n\
-	uniform mat4 mvpMat;\n\
-	void main() {\n\
-		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0);\n\
-	}";
-	
-	const char* model_geomShader = 
-		"#version 330\n\
-		layout (triangles) in;\n\
-		layout (triangle_strip, max_vertices = 6) out;\n\
-		uniform float moveWTime;\n\
-		void main()\n\
-		{\n\
-			for(int i = 0; i < 3; i++) { \n\
-				vec4 offset = vec4(5.0,0.0,0.0,0.0);\n\
-				gl_Position = gl_in[i].gl_Position + offset;\n\
-				EmitVertex();\n\
-			}\n\
-			EndPrimitive();\n\
-			for(int i = 0; i < 3; i++) { \n\
-				gl_Position = gl_in[i].gl_Position + vec4(moveWTime, moveWTime, 0.0, 0.0); \n\
-				EmitVertex(); \n\
-			}\n\
-			EndPrimitive(); \n\
-	}";
-	
-	const char* model_fragShader =
-		"#version 330\n\
-	out vec4 out_Color;\n\
-	uniform vec4 objColor;\n\
-	void main() {\n\
-		if(mod(gl_FragCoord.x,5) > 0.5 && mod(gl_FragCoord.y,5) > 0.5)\n\
-		{\n\
-			discard;\n\
-		}\n\
-		out_Color = objColor; \n\
-	}";
-
-	void Init() {
-		
-		model = Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj");
-		
-		//glGenVertexArrays(1, &modelVao);
-		//glBindVertexArray(modelVao);
-		//glGenBuffers(3, modelVbo);
-		//
-		//// Vertices
-		//glBindBuffer(GL_ARRAY_BUFFER, modelVbo[0]);
-		//glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
-		//glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		//glEnableVertexAttribArray(0);
-		//
-		//// Normals
-		//glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
-		//glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), &normals[0], GL_STATIC_DRAW);
-		//glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		//glEnableVertexAttribArray(1);
-		//
-		//// Uvs
-		//glBindBuffer(GL_ARRAY_BUFFER, modelVbo[2]);
-		//glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * uvs.size(), &uvs[0], GL_STATIC_DRAW);
-		//glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
-		//glEnableVertexAttribArray(2);
-		//
-		//glBindVertexArray(0);
-		//glBindBuffer(GL_ARRAY_BUFFER, 0);
-		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-		//
-		//shader = Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs");
-
-		/*modelShaders[0] = compileShader(model_vertShader, GL_VERTEX_SHADER, "modelDragonVert");
-		modelShaders[1] = compileShader(model_geomShader, GL_GEOMETRY_SHADER, "modelDragonGeom");
-		modelShaders[2] = compileShader(model_fragShader, GL_FRAGMENT_SHADER, "modelDragonFrag");
-
-		modelProgram = glCreateProgram();
-		glAttachShader(modelProgram, modelShaders[0]);
-		glAttachShader(modelProgram, modelShaders[1]);
-		glAttachShader(modelProgram, modelShaders[2]);
-		
-		glBindAttribLocation(modelProgram, 0, "in_Position");
-		glBindAttribLocation(modelProgram, 1, "in_Normal");
-		glBindAttribLocation(modelProgram, 2, "in_TexCoord");
-		
-		linkProgram(modelProgram);
-	}
-
-	void InitTexture()
-	{
-		// CARGAR TEXTURA
-		data = stbi_load("res/brick2.jpg", &width, &height, &nrChannels, 0);
-		
-		// CREAR TEXTURA	
-		glGenTextures(1, &texture);
-		glBindTexture(GL_TEXTURE_2D, texture);
-
-		if (data)
-		{
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-			glGenerateMipmap(GL_TEXTURE_2D);
-		}
-		else
-		{
-			std::cout << "Failed to load texture" << std::endl;
-		}
-
-		// Parámetros de la imagen
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-
-		//float borderColor[] = { 1.0f, 0.0f, 0.0f, 1.0f };
-		//glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-		
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	}
-
-	void Clean() {
-		//glDeleteBuffers(3, modelVbo);
-		//glDeleteVertexArrays(1, &modelVao);
-
-		//glDeleteProgram(modelProgram);
-		//glDeleteShader(modelShaders[0]);
-		//glDeleteShader(modelShaders[1]);
-		//glDeleteShader(modelShaders[2]);
-
-		stbi_image_free(data);
-		glDeleteTextures(1, &texture);
-	}
-
-	void Render(float dt)
-	{
-		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(0.f, 5.f, 0.0f));
-		//glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
-		model.objMat = t;
-		
-		glBindVertexArray(model.vao);
-		glUseProgram(shader.program);
-
-		glUniformMatrix4fv(glGetUniformLocation(shader.program, "objMat"), 1, GL_FALSE, glm::value_ptr(model.objMat));
-		glUniformMatrix4fv(glGetUniformLocation(shader.program, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
-		glUniformMatrix4fv(glGetUniformLocation(shader.program, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-
-		glUniform4f(glGetUniformLocation(shader.program, "objColor"), dragon.rgb[0], dragon.rgb[1], dragon.rgb[2], 1.f);
-		//glUniform4f(glGetUniformLocation(shader.program, "ambient_color"), wLight.ambient_color[0], wLight.ambient_color[1], wLight.ambient_color[2], 1.f);
-		//glUniform4f(glGetUniformLocation(shader.program, "diffuse_color"), wLight.diffuse_color[0], wLight.diffuse_color[1], wLight.diffuse_color[2], 1.f);
-		//glUniform4f(glGetUniformLocation(shader.program, "specular_color"), wLight.specular_color[0], wLight.specular_color[1], wLight.specular_color[2], 1.f);
-		//
-		//glUniform4f(glGetUniformLocation(shader.program, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
-		//glUniform4f(glGetUniformLocation(shader.program, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
-		//glUniform4f(glGetUniformLocation(shader.program, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
-		//
-		//glUniform4f(glGetUniformLocation(shader.program, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
-		//glUniform4f(glGetUniformLocation(shader.program, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
-		//glUniform1f(glGetUniformLocation(shader.program, "shininess"), wLight.shininess);
-		
-		moveWTime = cos(dt);
-		glUniform1f(glGetUniformLocation(shader.program, "moveWTime"), moveWTime);
-		//std::cout << moveWTime << std::endl;
-
-		glUniform1i(glGetUniformLocation(shader.program, "have_ambient"), dragon.haveAmbient);
-		glUniform1i(glGetUniformLocation(shader.program, "have_diffuse"), dragon.haveDiffuse);
-		glUniform1i(glGetUniformLocation(shader.program, "have_specular"), dragon.haveSpecular);
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glUniform1i(glGetUniformLocation(shader.program, "ourTexture"), 0);
-		
-		//DrawArrays(GL_TRIANGLES, 0, vertices.size());
-		//glDrawElements(GL_TRIANGLE_STRIP, uvs.size(), GL_UNSIGNED_INT, 0);
-		
-		glUseProgram(0);
-		glBindVertexArray(0);
-	}
-}
-
-*/
-///////////////////////////////////////////////// MODEL SWORD
-/*
-namespace ModelSword
-{
-	GLuint modelVao;
-	GLuint modelVbo[4];
-	GLuint modelShaders[2];
-	GLuint modelProgram;
-	glm::mat4 objMat = glm::mat4(1.f);
-
-	std::vector< glm::vec3 > vertices;
-	std::vector< glm::vec2 > uvs;
-	std::vector< glm::vec3 > normals;
-
-	//GLubyte modelIdx[] = {
-	//0, 1, 2, 3, UCHAR_MAX,
-	//4, 5, 6, 7, UCHAR_MAX,
-	//8, 9, 10, 11, UCHAR_MAX,
-	//12, 13, 14, 15, UCHAR_MAX,
-	//16, 17, 18, 19, UCHAR_MAX,
-	//20, 21, 22, 23, UCHAR_MAX
-	//};
-
-	const char* model_vertShader =
-		"#version 330\n\
-	in vec3 in_Position;\n\
-	in vec3 in_Normal;\n\
-	out vec4 vert_Normal;\n\
-	out vec4 fragPos;\n\
-	uniform mat4 objMat;\n\
-	uniform mat4 mv_Mat;\n\
-	uniform mat4 mvpMat;\n\
-	void main() {\n\
-		gl_Position = mvpMat * objMat * vec4(in_Position, 1.0); \n\
-		mat4 normalMat; \n\ = transpose(inverse(objMat));\n\
-		vert_Normal = normalMat * vec4(in_Normal, 0.0);\n\
-		fragPos = vec4(objMat * vec4(in_Position, 1.0));\n\
-	}";
-
-	const char* model_fragShader =
-		"#version 330\n\
-	in vec4 vert_Normal;\n\
-	in vec4 fragPos;\n\
-	out vec4 out_Color;\n\
-	uniform vec4 objColor;\n\
-	uniform vec4 dir_light; \n\
-	uniform vec4 ambient; \n\
-	uniform vec4 ambient_color; \n\
-	uniform vec4 diffuse; \n\
-	uniform vec4 diffuse_color; \n\
-	uniform vec4 specular; \n\
-	uniform vec4 specular_color; \n\
-	uniform vec4 viewPos; \n\
-	uniform float shininess;\n\
-	uniform bool have_ambient;\n\
-	uniform bool have_diffuse;\n\
-	uniform bool have_specular;\n\
-	void main() {\n\
-		vec4 ambientComp = ambient_color * ambient; \n\
-		vec4 diffuseComp = dot(vert_Normal, normalize(dir_light)) * diffuse * diffuse_color; \n\
-		vec4 viewDir = viewPos - fragPos;\n\
-		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);\n\
-		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular * specular_color ;\n\
-		if(have_ambient && have_diffuse && have_specular)\n\
-		{\n\
-		out_Color = objColor * (ambientComp + diffuseComp + specularComp);\n\
-		}\n\
-		else if(have_ambient && have_diffuse)\n\
-		{\n\
-		out_Color = objColor * (ambientComp + diffuseComp);\n\
-		}\n\
-		else if(have_ambient && have_specular)\n\
-		{\n\
-		out_Color = objColor * (ambientComp + specularComp);\n\
-		}\n\
-		else if(have_diffuse && have_specular)\n\
-		{\n\
-		out_Color = objColor * (diffuseComp + specularComp);\n\
-		}\n\
-		else if(have_ambient)\n\
-		{\n\
-		out_Color = objColor * (ambientComp);\n\
-		}\n\
-		else if(have_diffuse)\n\
-		{\n\
-		out_Color = objColor * (diffuseComp);\n\
-		}\n\
-		else if(have_specular)\n\
-		{\n\
-		out_Color = objColor * (specularComp);\n\
-		}\n\
-		else\n\
-		{\n\
-		out_Color = objColor;\n\
-		}\n\
-	}";
-
-	void Init() {
-
-		glGenVertexArrays(1, &modelVao);
-		glBindVertexArray(modelVao);
-		glGenBuffers(3, modelVbo);
-
-		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[0]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
-		glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(0);
-
-		//glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
-		//glBufferData(GL_ARRAY_BUFFER, sizeof(uvs), uvs.data(), GL_STATIC_DRAW);
-		//glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		//glEnableVertexAttribArray(1);
-		
-		glBindBuffer(GL_ARRAY_BUFFER, modelVbo[1]);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), &normals[0], GL_STATIC_DRAW);
-		glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-		glEnableVertexAttribArray(1);
-
-		//glPrimitiveRestartIndex(UCHAR_MAX);
-		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, modelVbo[3]);
-		//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(modelIdx), modelIdx, GL_STATIC_DRAW);
-
-		glBindVertexArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-		modelShaders[0] = compileShader(model_vertShader, GL_VERTEX_SHADER, "cubeVert");
-		modelShaders[1] = compileShader(model_fragShader, GL_FRAGMENT_SHADER, "cubeFrag");
-
-		modelProgram = glCreateProgram();
-		glAttachShader(modelProgram, modelShaders[0]);
-		glAttachShader(modelProgram, modelShaders[1]);
-		glBindAttribLocation(modelProgram, 0, "in_Position");
-		glBindAttribLocation(modelProgram, 1, "in_Normal");
-		linkProgram(modelProgram);
-	}
-
-	void Clean() {
-		glDeleteBuffers(3, modelVbo);
-		glDeleteVertexArrays(1, &modelVao);
-
-		glDeleteProgram(modelProgram);
-		glDeleteShader(modelShaders[0]);
-		glDeleteShader(modelShaders[1]);
-	}
-
-	void Render(float dt)
-	{
-		glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(cos(sword.pos[0] * dt), sword.pos[1], sword.pos[2]));
-		glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
-		objMat = t * s;
-		
-		glBindVertexArray(modelVao);
-		glUseProgram(modelProgram);
-
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "objMat"), 1, GL_FALSE, glm::value_ptr(objMat));
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mv_Mat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
-		glUniformMatrix4fv(glGetUniformLocation(modelProgram, "mvpMat"), 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-
-		glUniform4f(glGetUniformLocation(modelProgram, "objColor"), sword.rgb[0], sword.rgb[1], sword.rgb[2], 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "ambient_color"), wLight.ambient_color[0], wLight.ambient_color[1], wLight.ambient_color[2], 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "diffuse_color"), wLight.diffuse_color[0], wLight.diffuse_color[1], wLight.diffuse_color[2], 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "specular_color"), wLight.specular_color[0], wLight.specular_color[1], wLight.specular_color[2], 1.f);
-
-		glUniform4f(glGetUniformLocation(modelProgram, "ambient"), wLight.ambient, wLight.ambient, wLight.ambient, 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "diffuse"), wLight.diffuse, wLight.diffuse, wLight.diffuse, 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "specular"), wLight.specular, wLight.specular, wLight.specular, 1.f);
-
-		glUniform4f(glGetUniformLocation(modelProgram, "viewPos"), wPos.x, wPos.y, wPos.z, 1.f);
-		glUniform4f(glGetUniformLocation(modelProgram, "dir_light"), wLight.lightPos[0], wLight.lightPos[1], wLight.lightPos[2], 1.f);
-		glUniform1f(glGetUniformLocation(modelProgram, "shininess"), wLight.shininess);
-
-		glUniform1i(glGetUniformLocation(modelProgram, "have_ambient"), sword.haveAmbient);
-		glUniform1i(glGetUniformLocation(modelProgram, "have_diffuse"), sword.haveDiffuse);
-		glUniform1i(glGetUniformLocation(modelProgram, "have_specular"), sword.haveSpecular);
-
-		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
-
-		glUseProgram(0);
-		glBindVertexArray(0);
-	}
-}
-/////////////////////////////////////////////////
-
-*/
-#pragma endregion
-
 void GLinit(int width, int height) {
 	glViewport(0, 0, width, height);
 	glClearColor(0.2f, 0.2f, 0.2f, 1.f);
@@ -1056,32 +251,27 @@ void GLinit(int width, int height) {
 	Axis::setupAxis();
 
 	// SIMPLE CUBLE
-	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", nullptr), "res/cube.obj", 
-		ObjectParameters( glm::vec3(1.f,1.f,1.f),glm::vec4(0.4f,1.f,1.f,1.f), true,true,false));
+	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters( glm::vec3(1.f,1.f,1.f),glm::vec4(0.4f,1.f,1.f,1.f), true,true,false), 
+		Texture("res/brick2.jpg"));
 
 	// SWORD
-	sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", nullptr), "res/espada.obj",
-		ObjectParameters(glm::vec3(-7.f, 2.f, -7.f), glm::vec4(0.4f, 1.f, 1.f,1.f), true, true, false));
+	sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/espada.obj",
+		ObjectParameters(glm::vec3(-7.f, 2.f, -7.f), glm::vec4(0.4f, 1.f, 1.f,1.f), true, true, false), 
+		Texture("res/brick.jpg"));
 		
 	// SCENARIO
-	scenario = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", nullptr), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(0.5f, 0.5f, 0.5f,1.f), true, true, false));
+	scenario = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(0.5f, 0.5f, 0.5f,1.f), true, true, false), 
+		Texture("res/brick.jpg"));
 	
 }
 void GLcleanup() {
 	Axis::cleanupAxis();
 
-#pragma region OLD
-
-	//Cube::cleanupCube();
-	
-	/////////////////////////////////////////////////////TODO
-	//LightCube::cleanupCube();
-	//ModelDragon::Clean();
-	//ModelSword::Clean();
-	/////////////////////////////////////////////////////////
-
-#pragma endregion
+	sword->texture.Clean();
+	scenario->texture.Clean();
+	simpleCube->texture.Clean();
 }
 
 #pragma region Dolly Effect
@@ -1102,74 +292,21 @@ void MoveCamera()
 	}
 }
 
-#pragma endregion
-
-void GLrender(float dt) {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	RV::_projection = glm::perspective(RV::FOV, (float)800.f / (float)600.f, RV::zNear, RV::zFar);
-
-	RV::_modelView = glm::mat4(1.f);
-	RV::_modelView = glm::translate(RV::_modelView, glm::vec3(RV::panv[0], RV::panv[1], RV::panv[2]));
-	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[1], glm::vec3(1.f, 0.f, 0.f));
-	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[0], glm::vec3(0.f, 1.f, 0.f));
-	
-	RV::_MVP = RV::_projection * RV::_modelView;
-
-	// Get camera position
-	wPos = glm::vec4(0.f, 0.f, 0.f, 1.f);
-	glm::mat4 view_inv = glm::inverse(RV::_modelView);
-	wPos = view_inv * wPos;
-	
-	MoveCamera();	// dolly effect
-
-	Axis::drawAxis();
-	
+// RENDER MODELS
+void RenderModels()
+{
 	float currentTime = ImGui::GetTime();	// GETTING TIME
+	glm::mat4 t; // matrix for rotation
+	glm::mat4 s; // matrix for scale
 
-	glm::mat4 t;
-	glm::mat4 s;
-
-	// SIMPLE CUBE
-	#pragma region Simple Cube
-	simpleCube->shader.Use();
-	
-	// Translate position
-	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
-	simpleCube->objMat = t;
-	
-	simpleCube->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(simpleCube->objMat));
-	simpleCube->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
-	simpleCube->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
-
-	simpleCube->shader.SetFloat("objColor", simpleCube->obj.color.x, simpleCube->obj.color.y, simpleCube->obj.color.z, simpleCube->obj.color.w);
-
-	simpleCube->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
-	simpleCube->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
-	simpleCube->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
-	simpleCube->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
-	simpleCube->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
-	simpleCube->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength,1.f);
-	simpleCube->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength,1.f);
-	simpleCube->shader.SetFloat("shininess",phong.shininess);
-	
-	simpleCube->shader.SetFloat("viewPos",wPos.x, wPos.y, wPos.z, 1.f);
-	
-	moveWTime = cos(currentTime);
-	simpleCube->shader.SetFloat("moveWTime", moveWTime);
-
-	simpleCube->Draw();
-
-#pragma endregion
-	
 	// SWORD
-	#pragma region Sword
+#pragma region Sword
 
 	sword->shader.Use();
 
 	t = glm::translate(glm::mat4(), glm::vec3(sword->obj.pos));
 	s = glm::scale(glm::mat4(), glm::vec3(0.2f, 0.2f, 0.2f));
-	
+
 	sword->objMat = t * s;
 
 	sword->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(sword->objMat));
@@ -1177,7 +314,7 @@ void GLrender(float dt) {
 	sword->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
 	sword->shader.SetFloat("objColor", sword->obj.color.x, sword->obj.color.y, sword->obj.color.z, sword->obj.color.w);
-	
+
 	sword->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
 	sword->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
 	sword->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
@@ -1187,12 +324,15 @@ void GLrender(float dt) {
 	sword->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
 	sword->shader.SetFloat("shininess", phong.shininess);
 
+	sword->texture.Active();
+	sword->shader.SetInt("ourTexture", 0);
+
 	sword->Draw();
 
 #pragma endregion
 
 	// SCENARIO
-	#pragma region Scenario
+#pragma region Scenario
 
 	scenario->shader.Use();
 
@@ -1217,9 +357,72 @@ void GLrender(float dt) {
 
 	scenario->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
 
+	scenario->texture.Active();
+	scenario->shader.SetInt("ourTexture", 0);
+
 	scenario->Draw();
-	
+
 #pragma endregion
+
+	// SIMPLE CUBE
+#pragma region Simple Cube
+	simpleCube->shader.Use();
+
+	// Translate position
+	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
+	simpleCube->objMat = t;
+
+	simpleCube->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(simpleCube->objMat));
+	simpleCube->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	simpleCube->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+
+	simpleCube->shader.SetFloat("objColor", simpleCube->obj.color.x, simpleCube->obj.color.y, simpleCube->obj.color.z, simpleCube->obj.color.w);
+
+	simpleCube->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	simpleCube->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	simpleCube->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	simpleCube->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+	simpleCube->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	simpleCube->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	simpleCube->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	simpleCube->shader.SetFloat("shininess", phong.shininess);
+
+	simpleCube->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
+
+	moveWTime = cos(currentTime);
+	simpleCube->shader.SetFloat("moveWTime", moveWTime);
+
+	simpleCube->texture.Active();
+	simpleCube->shader.SetInt("ourTexture", 0);
+
+	simpleCube->Draw();
+
+#pragma endregion
+}
+
+#pragma endregion
+
+void GLrender(float dt) {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	RV::_projection = glm::perspective(RV::FOV, (float)800.f / (float)600.f, RV::zNear, RV::zFar);
+
+	RV::_modelView = glm::mat4(1.f);
+	RV::_modelView = glm::translate(RV::_modelView, glm::vec3(RV::panv[0], RV::panv[1], RV::panv[2]));
+	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[1], glm::vec3(1.f, 0.f, 0.f));
+	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[0], glm::vec3(0.f, 1.f, 0.f));
+	
+	RV::_MVP = RV::_projection * RV::_modelView;
+	
+	// Get camera position
+	wPos = glm::vec4(0.f, 0.f, 0.f, 1.f);
+	glm::mat4 view_inv = glm::inverse(RV::_modelView);
+	wPos = view_inv * wPos;
+	MoveCamera();	// dolly effect
+
+	Axis::drawAxis();
+	
+	RenderModels();
 	ImGui::Render();
 }
 

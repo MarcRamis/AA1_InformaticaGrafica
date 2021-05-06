@@ -3,6 +3,7 @@
 	// Inputs
 	in vec4 vert_Normal;
 	in vec4 fragPos;
+	in vec2 texCoord;
 	
 	// Outputs
 	out vec4 out_Color;
@@ -11,6 +12,7 @@
 	uniform vec4 objColor;	// Object color
 	uniform vec4 dir_light; // Light pos
 	uniform vec4 viewPos;	// Camera pos
+	uniform sampler2D ourTexture; // Texture
 	
 		// Ambient Components
 	uniform vec4 ambient_strength;
@@ -35,10 +37,12 @@
 		// --- Specular
 		vec4 viewDir = viewPos - fragPos;
 		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);
-		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular_strength * specular_color ;
+		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular_strength * specular_color;
 		//if(mod(gl_FragCoord.x,5) > 0.5 && mod(gl_FragCoord.y,5) > 0.5)
 		//{
 		//	discard;
 		//}
-		out_Color = objColor * (ambientComp + diffuseComp + specularComp); 
+		// --- Texture
+		vec4 textureColor = texture(ourTexture,texCoord);
+		out_Color = textureColor * objColor * (ambientComp + diffuseComp + specularComp); 
 	};

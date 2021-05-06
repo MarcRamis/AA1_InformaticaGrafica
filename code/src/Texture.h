@@ -1,4 +1,9 @@
 #pragma once
+
+#include <GL\glew.h>
+
+#include <iostream>
+
 class Texture
 {
 public:
@@ -7,4 +12,9 @@ public:
 	unsigned int id;
 
 	Texture();
+	~Texture();
+	Texture(const char* path);
+
+	void Clean();
+	void Active();
 };

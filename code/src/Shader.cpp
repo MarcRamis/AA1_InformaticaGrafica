@@ -4,7 +4,6 @@ extern GLuint compileShader(const char* shaderStr, GLenum shaderType, const char
 extern void linkProgram(GLuint program);
 
 Shader::Shader() {}
-
 Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath)
 {
     // 1. retrieve the vertex/geomtry/fragment source code from filePath

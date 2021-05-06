@@ -237,45 +237,6 @@ void main() {\n\
 
 #pragma endregion
 
-void GLinit(int width, int height) {
-	glViewport(0, 0, width, height);
-	glClearColor(0.2f, 0.2f, 0.2f, 1.f);
-	glClearDepth(1.f);
-	glDepthFunc(GL_LEQUAL);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-
-	RV::_projection = glm::perspective(RV::FOV, (float)width / (float)height, RV::zNear, RV::zFar);
-
-	// Setup shaders & geometry
-	Axis::setupAxis();
-
-	// SIMPLE CUBLE
-	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters( glm::vec3(1.f,1.f,1.f),glm::vec4(0.4f,1.f,1.f,1.f), true,true,false), 
-		Texture("res/brick2.jpg"));
-
-	// SWORD
-	sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/espada.obj",
-		ObjectParameters(glm::vec3(-7.f, 2.f, -7.f), glm::vec4(0.4f, 1.f, 1.f,1.f), true, true, false), 
-		Texture("res/brick.jpg"));
-		
-	// SCENARIO
-	scenario = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(0.5f, 0.5f, 0.5f,1.f), true, true, false), 
-		Texture("res/brick.jpg"));
-	
-}
-void GLcleanup() {
-	Axis::cleanupAxis();
-
-	sword->texture.Clean();
-	scenario->texture.Clean();
-	simpleCube->texture.Clean();
-}
-
-#pragma region Dolly Effect
-
 // DOLLY FUNCTION
 void MoveCamera()
 {
@@ -290,6 +251,24 @@ void MoveCamera()
 	{
 		RV::FOV = glm::radians(radians);
 	}
+}
+
+void InitModels()
+{
+	// SIMPLE CUBLE
+	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(1.f, 1.f, 1.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/brick2.jpg"));
+
+	// SWORD
+	sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/espada.obj",
+		ObjectParameters(glm::vec3(-7.f, 2.f, -7.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/brick.jpg"));
+
+	// SCENARIO
+	scenario = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), true, true, false),
+		Texture("res/brick.jpg"));
 }
 
 // RENDER MODELS
@@ -400,6 +379,33 @@ void RenderModels()
 #pragma endregion
 }
 
+void GLinit(int width, int height) {
+	glViewport(0, 0, width, height);
+	glClearColor(0.2f, 0.2f, 0.2f, 1.f);
+	glClearDepth(1.f);
+	glDepthFunc(GL_LEQUAL);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+
+	RV::_projection = glm::perspective(RV::FOV, (float)width / (float)height, RV::zNear, RV::zFar);
+
+	// Setup shaders & geometry
+	Axis::setupAxis();
+	
+	InitModels();
+}
+void GLcleanup() {
+	Axis::cleanupAxis();
+
+	sword->texture.Clean();
+	scenario->texture.Clean();
+	simpleCube->texture.Clean();
+}
+
+#pragma region Dolly Effect
+
+
+
 #pragma endregion
 
 void GLrender(float dt) {
@@ -451,10 +457,11 @@ void GUI() {
 
 		if (ImGui::TreeNode("Scenario"))
 		{
+			ImGui::DragFloat3("Translate", glm::value_ptr(scenario->obj.pos), 0.f, 1.f);
 			ImGui::ColorEdit4("Object Color", glm::value_ptr(scenario->obj.color));
-			ImGui::Checkbox("Active ambient", &scenario->obj.haveAmbient);
-			ImGui::Checkbox("Active diffuse", &scenario->obj.haveDiffuse);
-			ImGui::Checkbox("Active specular", &scenario->obj.haveSpecular);
+			//ImGui::Checkbox("Active ambient", &scenario->obj.haveAmbient);
+			//ImGui::Checkbox("Active diffuse", &scenario->obj.haveDiffuse);
+			//ImGui::Checkbox("Active specular", &scenario->obj.haveSpecular);
 
 			ImGui::TreePop();
 		}
@@ -463,9 +470,9 @@ void GUI() {
 		{
 			ImGui::DragFloat3("Translate", glm::value_ptr(simpleCube->obj.pos), 0.f, 1.f);
 			ImGui::ColorEdit4("Object Color", glm::value_ptr(simpleCube->obj.color));
-			ImGui::Checkbox("Active ambient", &simpleCube->obj.haveAmbient);
-			ImGui::Checkbox("Active diffuse", &simpleCube->obj.haveDiffuse);
-			ImGui::Checkbox("Active specular", &simpleCube->obj.haveSpecular);
+			//ImGui::Checkbox("Active ambient", &simpleCube->obj.haveAmbient);
+			//ImGui::Checkbox("Active diffuse", &simpleCube->obj.haveDiffuse);
+			//ImGui::Checkbox("Active specular", &simpleCube->obj.haveSpecular);
 
 			ImGui::TreePop();
 		}
@@ -474,9 +481,9 @@ void GUI() {
 		{
 			ImGui::DragFloat3("Translate", glm::value_ptr(sword->obj.pos), 0.f, 1.f);
 			ImGui::ColorEdit4("Object Color", glm::value_ptr(sword->obj.color));
-			ImGui::Checkbox("Active ambient", &sword->obj.haveAmbient);
-			ImGui::Checkbox("Active diffuse", &sword->obj.haveDiffuse);
-			ImGui::Checkbox("Active specular", &sword->obj.haveSpecular);
+			//ImGui::Checkbox("Active ambient", &sword->obj.haveAmbient);
+			//ImGui::Checkbox("Active diffuse", &sword->obj.haveDiffuse);
+			//ImGui::Checkbox("Active specular", &sword->obj.haveSpecular);
 
 			ImGui::TreePop();
 		}

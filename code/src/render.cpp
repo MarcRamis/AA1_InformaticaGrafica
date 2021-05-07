@@ -551,6 +551,7 @@ void RenderModels()
 
 	sword->shader.SetFloat("objColor", sword->obj.color.x, sword->obj.color.y, sword->obj.color.z, sword->obj.color.w);
 
+	// PHONG UNIFORMS
 	sword->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
 	sword->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
 	sword->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
@@ -559,6 +560,8 @@ void RenderModels()
 	sword->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
 	sword->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
 	sword->shader.SetFloat("shininess", phong.shininess);
+
+	simpleCube->shader.SetFloat("time", currentTime);
 
 	sword->texture.Active();
 	sword->shader.SetInt("ourTexture", 0);
@@ -592,6 +595,8 @@ void RenderModels()
 	scenario->shader.SetFloat("shininess", phong.shininess);
 
 	scenario->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
+
+	simpleCube->shader.SetFloat("time", currentTime);
 
 	scenario->texture.Active();
 	scenario->shader.SetInt("ourTexture", 0);
@@ -627,6 +632,8 @@ void RenderModels()
 
 	moveWTime = cos(currentTime);
 	simpleCube->shader.SetFloat("moveWTime", moveWTime);
+
+	simpleCube->shader.SetFloat("time", currentTime);
 
 	simpleCube->texture.Active();
 	simpleCube->shader.SetInt("ourTexture", 0);

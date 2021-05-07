@@ -1,6 +1,7 @@
 #include <GL\glew.h>
 #include <glm\gtc\type_ptr.hpp>
 #include <glm\gtc\matrix_transform.hpp>
+#include <glm\gtc\random.hpp>
 #include <cstdio>
 #include <cassert>
 
@@ -18,20 +19,25 @@
 
 #include <glm/gtx/string_cast.hpp>
 
-//#define STB_IMAGE_IMPLEMENTATION
-//#include "stb_image.h"
-
 #include "Model.h"
 
 ///////////////////// VARIABLES
-glm::vec4 wPos;
+glm::vec4 wPos; // Camera pos
+float moveWTime = 0.0f; // move in world time
 
+// DOLLY EFFECT
 float width = 16.f;
 float radians = 65.f;
 bool moveCamera = false;
 
+// Random explode
+float randomX, randomY, randomZ;
+glm::vec3 random;
 
-float moveWTime = 0.0f;
+// DISCARD EFFECT
+bool isMatrix = false;
+float displaceX = 5.0f;
+float displaceY = 5.0f;
 
 Model *simpleCube;
 Model *scenario;
@@ -41,6 +47,7 @@ Light phong = Light(glm::vec4(0.f,0.f,1.f, 1.f),
 	glm::vec4(1.f,1.f,1.f,1.f), glm::vec4(1.f, 1.f, 1.f,1.f), glm::vec4(1.f, 0.f, 0.f,1.f),
 	0.2f,0.3f,0.5f,30.f);
 
+///////////////////// TEACHER FUNCTIONS
 #pragma region Teacher functions
 
 GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name = "") {
@@ -512,13 +519,30 @@ void MoveCamera()
 
 void InitModels()
 {
+	srand(time(nullptr));
+	randomX = glm::linearRand(1.f, 10.f);
+	randomY = glm::linearRand(1.f, 10.f);
+	randomZ = glm::linearRand(1.f, 10.f);
+	std::cout << "Random X: " << randomX << std::endl;
+	std::cout << "Random Y: " << randomY << std::endl;
+	std::cout << "Random Z: " << randomZ << std::endl;
+	
+	random = glm::vec3(randomX, randomY, randomZ);
+
 	// SIMPLE CUBLE
-	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(1.f, 1.f, 1.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/brick2.jpg"));
+	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo_billboard.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(1.f, 4.f, -15.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/cat.jpg"));
+	
+	simpleCube->vertices.clear();
+	simpleCube->normals.clear();
+	simpleCube->uvs.clear();
+	simpleCube->vertices.push_back(glm::vec3(0.0, 0.0, 0.0));
+	simpleCube->normals.push_back(glm::vec3(0.0, 0.0, 0.0));
+	simpleCube->uvs.push_back(glm::vec3(0.0, 0.0, 0.0));
 
 	// SWORD
-	sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/espada.obj",
+	sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo_explode.gs"), "res/espada.obj",
 		ObjectParameters(glm::vec3(-7.f, 2.f, -7.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
 		Texture("res/brick.jpg"));
 
@@ -556,17 +580,27 @@ void RenderModels()
 	sword->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
 	sword->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
 	sword->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
-	sword->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
-	sword->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
-	sword->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+
+	if (sword->obj.haveAmbient) sword->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	else sword->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	if (sword->obj.haveDiffuse) sword->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	else sword->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	if (sword->obj.haveSpecular) sword->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	else sword->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+	
 	sword->shader.SetFloat("shininess", phong.shininess);
 
-	simpleCube->shader.SetFloat("time", currentTime);
+	sword->shader.SetFloat("time", currentTime);
+	sword->shader.SetFloat("random", random.x,random.y,random.z);
+	
+	sword->shader.SetInt("isMatrix", isMatrix);
+	sword->shader.SetFloat("displaceX", displaceX);
+	sword->shader.SetFloat("displaceY", displaceY);
 
 	sword->texture.Active();
 	sword->shader.SetInt("ourTexture", 0);
 
-	sword->Draw();
+	sword->DrawTriangles();
 
 #pragma endregion
 
@@ -589,19 +623,26 @@ void RenderModels()
 	scenario->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
 	scenario->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
 	scenario->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
-	scenario->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
-	scenario->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
-	scenario->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+
+	if (scenario->obj.haveAmbient) scenario->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	else scenario->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	if (scenario->obj.haveDiffuse) scenario->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	else scenario->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	if (scenario->obj.haveSpecular) scenario->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	else scenario->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+	
 	scenario->shader.SetFloat("shininess", phong.shininess);
 
 	scenario->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
 
-	simpleCube->shader.SetFloat("time", currentTime);
+	scenario->shader.SetInt("isMatrix", isMatrix);
+	scenario->shader.SetFloat("displaceX", displaceX);
+	scenario->shader.SetFloat("displaceY", displaceY);
 
 	scenario->texture.Active();
 	scenario->shader.SetInt("ourTexture", 0);
 
-	scenario->Draw();
+	scenario->DrawTriangles();
 
 #pragma endregion
 
@@ -618,27 +659,37 @@ void RenderModels()
 	simpleCube->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
 	simpleCube->shader.SetFloat("objColor", simpleCube->obj.color.x, simpleCube->obj.color.y, simpleCube->obj.color.z, simpleCube->obj.color.w);
-
+	
 	simpleCube->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
 	simpleCube->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
 	simpleCube->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
 	simpleCube->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
-	simpleCube->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
-	simpleCube->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
-	simpleCube->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	
+	if (simpleCube->obj.haveAmbient) simpleCube->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	else simpleCube->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	if (simpleCube->obj.haveDiffuse) simpleCube->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	else simpleCube->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	if (simpleCube->obj.haveSpecular) simpleCube->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	else simpleCube->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+
 	simpleCube->shader.SetFloat("shininess", phong.shininess);
 
 	simpleCube->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
 
+	simpleCube->shader.SetInt("isMatrix", isMatrix);
+	simpleCube->shader.SetFloat("displaceX", displaceX);
+	simpleCube->shader.SetFloat("displaceY", displaceY);
+	
 	moveWTime = cos(currentTime);
 	simpleCube->shader.SetFloat("moveWTime", moveWTime);
 
 	simpleCube->shader.SetFloat("time", currentTime);
+	simpleCube->shader.SetFloat("random", random.x,random.y,random.z);
 
 	simpleCube->texture.Active();
 	simpleCube->shader.SetInt("ourTexture", 0);
-
-	simpleCube->Draw();
+	
+	simpleCube->DrawPoints();
 
 #pragma endregion
 }
@@ -723,9 +774,9 @@ void GUI() {
 		{
 			ImGui::DragFloat3("Translate", glm::value_ptr(scenario->obj.pos), 0.f, 1.f);
 			ImGui::ColorEdit4("Object Color", glm::value_ptr(scenario->obj.color));
-			//ImGui::Checkbox("Active ambient", &scenario->obj.haveAmbient);
-			//ImGui::Checkbox("Active diffuse", &scenario->obj.haveDiffuse);
-			//ImGui::Checkbox("Active specular", &scenario->obj.haveSpecular);
+			ImGui::Checkbox("Active ambient", &scenario->obj.haveAmbient);
+			ImGui::Checkbox("Active diffuse", &scenario->obj.haveDiffuse);
+			ImGui::Checkbox("Active specular", &scenario->obj.haveSpecular);
 
 			ImGui::TreePop();
 		}
@@ -734,9 +785,9 @@ void GUI() {
 		{
 			ImGui::DragFloat3("Translate", glm::value_ptr(simpleCube->obj.pos), 0.f, 1.f);
 			ImGui::ColorEdit4("Object Color", glm::value_ptr(simpleCube->obj.color));
-			//ImGui::Checkbox("Active ambient", &simpleCube->obj.haveAmbient);
-			//ImGui::Checkbox("Active diffuse", &simpleCube->obj.haveDiffuse);
-			//ImGui::Checkbox("Active specular", &simpleCube->obj.haveSpecular);
+			ImGui::Checkbox("Active ambient", &simpleCube->obj.haveAmbient);
+			ImGui::Checkbox("Active diffuse", &simpleCube->obj.haveDiffuse);
+			ImGui::Checkbox("Active specular", &simpleCube->obj.haveSpecular);
 
 			ImGui::TreePop();
 		}
@@ -745,22 +796,27 @@ void GUI() {
 		{
 			ImGui::DragFloat3("Translate", glm::value_ptr(sword->obj.pos), 0.f, 1.f);
 			ImGui::ColorEdit4("Object Color", glm::value_ptr(sword->obj.color));
-			//ImGui::Checkbox("Active ambient", &sword->obj.haveAmbient);
-			//ImGui::Checkbox("Active diffuse", &sword->obj.haveDiffuse);
-			//ImGui::Checkbox("Active specular", &sword->obj.haveSpecular);
+			ImGui::Checkbox("Active ambient", &sword->obj.haveAmbient);
+			ImGui::Checkbox("Active diffuse", &sword->obj.haveDiffuse);
+			ImGui::Checkbox("Active specular", &sword->obj.haveSpecular);
 
 			ImGui::TreePop();
 		}
 
-		if (ImGui::TreeNode("Camera Properties - Dolly"))
+		ImGui::Checkbox("Dolly Effect", &moveCamera);
+		if (moveCamera)
 		{
 			ImGui::SliderFloat("Width", &width, 5, 30);
 			ImGui::SliderFloat("PosZ", &RV::panv[2], -20, -6);
-			ImGui::Checkbox("Dolly Effect", &moveCamera);
-
-			ImGui::TreePop();
 		}
 		
+		ImGui::Checkbox("Discard Effect", &isMatrix);
+		if (isMatrix)
+		{
+			ImGui::DragFloat("Displace in X", &displaceX, 0.1f, 0.0f,50.f);
+			ImGui::DragFloat("Displace in Y", &displaceY, 0.1f, 0.0f,50.f);
+		}
+
 		/////////////////////////////////////////////////////////
 	}
 	// .........................

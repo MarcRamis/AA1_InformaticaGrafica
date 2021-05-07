@@ -57,7 +57,7 @@ Model::~Model()
 }
 
 
-void Model::Draw()
+void Model::DrawTriangles()
 {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -65,6 +65,19 @@ void Model::Draw()
 	glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 	glDrawElements(GL_TRIANGLE_STRIP, uvs.size(), GL_UNSIGNED_INT, 0);
 	
+	glBindVertexArray(0);
+	glUseProgram(0);
+	glDisable(GL_BLEND);
+}
+
+void Model::DrawPoints()
+{
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBindVertexArray(vao);
+	glDrawArrays(GL_POINTS, 0, vertices.size());
+	glDrawElements(GL_TRIANGLE_STRIP, uvs.size(), GL_UNSIGNED_INT, 0);
+
 	glBindVertexArray(0);
 	glUseProgram(0);
 	glDisable(GL_BLEND);

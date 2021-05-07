@@ -50,5 +50,6 @@ public:
 
 	~Model();
 
-	void Draw();
+	void DrawTriangles();
+	void DrawPoints();
 };

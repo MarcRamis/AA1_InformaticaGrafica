@@ -27,6 +27,11 @@
 	uniform vec4 specular_color;
 	uniform float shininess;
 	
+		// Uniform booleans
+	uniform bool isMatrix;
+	uniform float displaceX;
+	uniform float displaceY;
+	
 	void main() 
 	{
 		// ----- PHONG SHADING
@@ -38,10 +43,16 @@
 		vec4 viewDir = viewPos - fragPos;
 		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);
 		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular_strength * specular_color;
-		//if(mod(gl_FragCoord.x,5) > 0.5 && mod(gl_FragCoord.y,5) > 0.5)
-		//{
-		//	discard;
-		//}
+		
+		// DISCARD EFFECT
+		if(isMatrix)
+		{
+			if(mod(gl_FragCoord.x,displaceX) > 0.5 && mod(gl_FragCoord.y,displaceY) > 0.5)
+			{
+				discard;
+			}
+		}
+
 		// --- Texture
 		vec4 textureColor = texture(ourTexture,texCoord);
 		out_Color = textureColor * objColor * (ambientComp + diffuseComp + specularComp); 

@@ -150,7 +150,6 @@ xcopy "$(ProjectDir)libs\SDL2.dll" "$(OutDir)" /y /d</Command>
     <ClInclude Include="src\Model.h" />
     <ClInclude Include="src\Shader.h" />
     <ClInclude Include="src\Texture.h" />
-    <ClInclude Include="src\Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="GL_framework.rc" />

@@ -1,6 +1,6 @@
 #version 330
 	layout (points) in;
-	layout (triangle_strip, max_vertices = 4) out;
+	layout (triangle_strip, max_vertices = 12) out;
 	
 	// Inputs
 	in vec4 _vert_Normal[];
@@ -39,4 +39,60 @@
 		EmitVertex();
 		
 		EndPrimitive();  
+
+		vec4 offset = vec4(15.0,0.0,0.0,0.0);
+
+		gl_Position = gl_in[0].gl_Position + vec4(-10, -10, 0.0, 0.0) +offset; 
+		vert_Normal = vec4(0.0,0.0,1.0,0.0);
+		fragPos = gl_in[0].gl_Position + vec4(-10, -10, 0.0, 0.0) + offset; 
+		texCoord = vec2(0.0,1.0);
+		EmitVertex();
+
+		gl_Position = gl_in[0].gl_Position + vec4( 10, -10, 0.0, 0.0) + offset;  
+		vert_Normal = vec4(0.0,0.0,1.0,0.0);
+		fragPos = gl_in[0].gl_Position + vec4(10, -10, 0.0, 0.0) + offset; 
+		texCoord = vec2(1.0,1.0);
+		EmitVertex();
+
+		gl_Position = gl_in[0].gl_Position + vec4(-10,  10, 0.0, 0.0) + offset;
+		vert_Normal = vec4(0.0,0.0,1.0,0.0);
+		fragPos = gl_in[0].gl_Position + vec4(-10, 10, 0.0, 0.0) + offset; 
+		texCoord = vec2(0.0,0.0);
+		EmitVertex();
+		
+		gl_Position = gl_in[0].gl_Position + vec4( 10,  10, 0.0, 0.0) + offset;  
+		vert_Normal = vec4(0.0,0.0,1.0,0.0);
+		fragPos = gl_in[0].gl_Position + vec4(10, 10, 0.0, 0.0) + offset; 
+		texCoord = vec2(1.0,0.0);
+		EmitVertex();
+		
+		EndPrimitive(); 
+
+		offset = vec4(-15.0,0.0,0.0,0.0);
+
+		gl_Position = gl_in[0].gl_Position + vec4(-10, -10, 0.0, 0.0) +offset; 
+		vert_Normal = vec4(0.0,0.0,1.0,0.0);
+		fragPos = gl_in[0].gl_Position + vec4(-10, -10, 0.0, 0.0) + offset; 
+		texCoord = vec2(0.0,1.0);
+		EmitVertex();
+
+		gl_Position = gl_in[0].gl_Position + vec4( 10, -10, 0.0, 0.0) + offset;  
+		vert_Normal = vec4(0.0,0.0,1.0,0.0);
+		fragPos = gl_in[0].gl_Position + vec4(10, -10, 0.0, 0.0) + offset; 
+		texCoord = vec2(1.0,1.0);
+		EmitVertex();
+
+		gl_Position = gl_in[0].gl_Position + vec4(-10,  10, 0.0, 0.0) + offset;
+		vert_Normal = vec4(0.0,0.0,1.0,0.0);
+		fragPos = gl_in[0].gl_Position + vec4(-10, 10, 0.0, 0.0) + offset; 
+		texCoord = vec2(0.0,0.0);
+		EmitVertex();
+		
+		gl_Position = gl_in[0].gl_Position + vec4( 10,  10, 0.0, 0.0) + offset;  
+		vert_Normal = vec4(0.0,0.0,1.0,0.0);
+		fragPos = gl_in[0].gl_Position + vec4(10, 10, 0.0, 0.0) + offset; 
+		texCoord = vec2(1.0,0.0);
+		EmitVertex();
+		
+		EndPrimitive(); 
 	};

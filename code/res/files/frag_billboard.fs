@@ -56,7 +56,7 @@
 		// --- Texture
 		vec4 textureColor = texture(ourTexture,texCoord);
 
-		if(textureColor.r <= 0.1 && textureColor.g <= 0.1 && textureColor.b <= 0.1)
+		if(textureColor.r <= 0.01 && textureColor.g <= 0.01 && textureColor.b <= 0.01)
 		{
 			discard;
 		}

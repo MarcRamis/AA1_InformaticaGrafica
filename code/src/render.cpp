@@ -42,6 +42,9 @@ float displaceY = 5.0f;
 Model *billboard;
 Model *scenario;
 Model *sword;
+Model *anvil;
+Model *box;
+Model *chest;
 
 Light phong = Light(glm::vec4(0.f,0.f,1.f, 1.f), 
 	glm::vec4(1.f,1.f,1.f,1.f), glm::vec4(1.f, 1.f, 1.f,1.f), glm::vec4(1.f, 0.f, 0.f,1.f),
@@ -522,16 +525,13 @@ void InitModels()
 	randomX = glm::linearRand(1.f, 10.f);
 	randomY = glm::linearRand(1.f, 10.f);
 	randomZ = glm::linearRand(1.f, 10.f);
-	std::cout << "Random X: " << randomX << std::endl;
-	std::cout << "Random Y: " << randomY << std::endl;
-	std::cout << "Random Z: " << randomZ << std::endl;
 	
 	random = glm::vec3(randomX, randomY, randomZ);
 
 	// BILLBOARD
 	billboard = new Model(Shader("res/files/vert.vs", "res/files/frag_billboard.fs", "res/files/geo_billboard.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(1.f, 4.f, -15.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/tree.png", Texture::ETextureType::PNG));
+		ObjectParameters(glm::vec3(1.f, 6.f, -15.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/soldier.png", Texture::ETextureType::PNG));
 	
 	billboard->vertices.clear();
 	billboard->normals.clear();
@@ -541,14 +541,29 @@ void InitModels()
 	billboard->uvs.push_back(glm::vec3(0.0, 0.0, 0.0));
 
 	// SWORD
-	sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo_explode.gs"), "res/espada.obj",
-		ObjectParameters(glm::vec3(-7.f, 2.f, -7.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/brick.jpg", Texture::ETextureType::JPG));
+	sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/sword.obj",
+		ObjectParameters(glm::vec3(-7.f, 5.2f, -7.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/iron.jpg", Texture::ETextureType::JPG));
 
 	// SCENARIO
 	scenario = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), true, true, false),
-		Texture("res/brick.jpg", Texture::ETextureType::JPG));
+		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/wood.png", Texture::ETextureType::PNG));
+	
+	// ANVIL
+	anvil = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/anvil.obj",
+		ObjectParameters(glm::vec3(-7.f, -1.f, -7.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/iron2.jpg", Texture::ETextureType::JPG));
+
+	// BOX
+	box = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/box.obj",
+		ObjectParameters(glm::vec3(5.f, -0.2f, -7.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/wood.png", Texture::ETextureType::PNG));
+
+	// CHEST
+	chest = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo_explode.gs"), "res/chest.obj",
+		ObjectParameters(glm::vec3(5.f, 1.7f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/iron.jpg", Texture::ETextureType::JPG));
 }
 
 // RENDER MODELS
@@ -603,8 +618,143 @@ void RenderModels()
 
 #pragma endregion
 
-	// SCENARIO
-#pragma region Scenario
+	// ANVIL
+#pragma region Anvil
+
+	anvil->shader.Use();
+
+	t = glm::translate(glm::mat4(), glm::vec3(anvil->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(1.0f * 2.f, 1.0f * 2.f, 1.0f * 2.f));
+
+	anvil->objMat = t * s;
+
+	anvil->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(anvil->objMat));
+	anvil->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	anvil->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+
+	anvil->shader.SetFloat("objColor", anvil->obj.color.x, anvil->obj.color.y, anvil->obj.color.z, anvil->obj.color.w);
+
+	// PHONG UNIFORMS
+	anvil->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	anvil->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	anvil->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	anvil->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+
+	if (anvil->obj.haveAmbient) anvil->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	else anvil->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	if (anvil->obj.haveDiffuse) anvil->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	else anvil->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	if (anvil->obj.haveSpecular) anvil->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	else anvil->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+
+	anvil->shader.SetFloat("shininess", phong.shininess);
+
+	anvil->shader.SetFloat("time", currentTime);
+	anvil->shader.SetFloat("random", random.x, random.y, random.z);
+
+	anvil->shader.SetInt("isMatrix", isMatrix);
+	anvil->shader.SetFloat("displaceX", displaceX);
+	anvil->shader.SetFloat("displaceY", displaceY);
+
+	anvil->texture.Active();
+	anvil->shader.SetInt("ourTexture", 0);
+
+	anvil->DrawTriangles();
+
+#pragma endregion
+
+	// BOX
+#pragma region Box
+
+	box->shader.Use();
+
+	t = glm::translate(glm::mat4(), glm::vec3(box->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(1.f, 1.f, 1.f) * 0.05f);
+
+	box->objMat = t * s;
+
+	box->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(box->objMat));
+	box->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	box->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+
+	box->shader.SetFloat("objColor", box->obj.color.x, box->obj.color.y, box->obj.color.z, box->obj.color.w);
+
+	// PHONG UNIFORMS
+	box->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	box->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	box->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	box->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+
+	if (box->obj.haveAmbient) box->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	else box->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	if (box->obj.haveDiffuse) box->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	else box->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	if (box->obj.haveSpecular) box->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	else box->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+
+	box->shader.SetFloat("shininess", phong.shininess);
+
+	box->shader.SetFloat("time", currentTime);
+	box->shader.SetFloat("random", random.x, random.y, random.z);
+
+	box->shader.SetInt("isMatrix", isMatrix);
+	box->shader.SetFloat("displaceX", displaceX);
+	box->shader.SetFloat("displaceY", displaceY);
+
+	box->texture.Active();
+	box->shader.SetInt("ourTexture", 0);
+
+	box->DrawTriangles();
+
+#pragma endregion
+
+	// CHEST
+#pragma region Chest
+
+	chest->shader.Use();
+
+	t = glm::translate(glm::mat4(), glm::vec3(chest->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(1.f, 1.f, 1.f)* 2.f);
+
+	chest->objMat = t * s;
+
+	chest->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(chest->objMat));
+	chest->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	chest->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+
+	chest->shader.SetFloat("objColor", chest->obj.color.x, chest->obj.color.y, chest->obj.color.z, chest->obj.color.w);
+
+	// PHONG UNIFORMS
+	chest->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	chest->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	chest->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	chest->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+
+	if (chest->obj.haveAmbient) chest->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	else chest->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	if (chest->obj.haveDiffuse) chest->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	else chest->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	if (chest->obj.haveSpecular) chest->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	else chest->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+
+	chest->shader.SetFloat("shininess", phong.shininess);
+
+	chest->shader.SetFloat("time", currentTime);
+	chest->shader.SetFloat("random", random.x, random.y, random.z);
+
+	chest->shader.SetInt("isMatrix", isMatrix);
+	chest->shader.SetFloat("displaceX", displaceX);
+	chest->shader.SetFloat("displaceY", displaceY);
+
+	chest->texture.Active();
+	chest->shader.SetInt("ourTexture", 0);
+
+	chest->DrawTriangles();
+
+#pragma endregion
+
+	// GROUND
+#pragma region Ground
 
 	scenario->shader.Use();
 
@@ -645,8 +795,8 @@ void RenderModels()
 
 #pragma endregion
 
-	// SIMPLE CUBE
-#pragma region Simple Cube
+	// BILLBOARD
+#pragma region Billboard
 	billboard->shader.Use();
 
 	// Translate position
@@ -712,6 +862,7 @@ void GLcleanup() {
 	Axis::cleanupAxis();
 
 	sword->texture.Clean();
+	anvil->texture.Clean();
 	scenario->texture.Clean();
 	billboard->texture.Clean();
 }
@@ -762,36 +913,72 @@ void GUI() {
 			
 			ImGui::TreePop();
 		}
-
 		if (ImGui::TreeNode("Scenario"))
 		{
-			ImGui::DragFloat3("Translate", glm::value_ptr(scenario->obj.pos), 0.f, 1.f);
-			ImGui::ColorEdit4("Object Color", glm::value_ptr(scenario->obj.color));
-			ImGui::Checkbox("Active ambient", &scenario->obj.haveAmbient);
-			ImGui::Checkbox("Active diffuse", &scenario->obj.haveDiffuse);
-			ImGui::Checkbox("Active specular", &scenario->obj.haveSpecular);
+			if (ImGui::TreeNode("Ground"))
+			{
+				ImGui::DragFloat3("Translate", glm::value_ptr(scenario->obj.pos), 0.f, 1.f);
+				ImGui::ColorEdit4("Object Color", glm::value_ptr(scenario->obj.color));
+				ImGui::Checkbox("Active ambient", &scenario->obj.haveAmbient);
+				ImGui::Checkbox("Active diffuse", &scenario->obj.haveDiffuse);
+				ImGui::Checkbox("Active specular", &scenario->obj.haveSpecular);
+
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Sword"))
+			{
+				ImGui::DragFloat3("Translate", glm::value_ptr(sword->obj.pos), 0.f, 1.f);
+				ImGui::ColorEdit4("Object Color", glm::value_ptr(sword->obj.color));
+				ImGui::Checkbox("Active ambient", &sword->obj.haveAmbient);
+				ImGui::Checkbox("Active diffuse", &sword->obj.haveDiffuse);
+				ImGui::Checkbox("Active specular", &sword->obj.haveSpecular);
+
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Anvil"))
+			{
+				ImGui::DragFloat3("Translate", glm::value_ptr(anvil->obj.pos), 0.f, 1.f);
+				ImGui::ColorEdit4("Object Color", glm::value_ptr(anvil->obj.color));
+				ImGui::Checkbox("Active ambient", &anvil->obj.haveAmbient);
+				ImGui::Checkbox("Active diffuse", &anvil->obj.haveDiffuse);
+				ImGui::Checkbox("Active specular", &anvil->obj.haveSpecular);
+
+				ImGui::TreePop();
+			}
+			if (ImGui::TreeNode("Box"))
+			{
+				ImGui::DragFloat3("Translate", glm::value_ptr(box->obj.pos), 0.f, 1.f);
+				ImGui::ColorEdit4("Object Color", glm::value_ptr(box->obj.color));
+				ImGui::Checkbox("Active ambient", &box->obj.haveAmbient);
+				ImGui::Checkbox("Active diffuse", &box->obj.haveDiffuse);
+				ImGui::Checkbox("Active specular", &box->obj.haveSpecular);
+
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Chest"))
+			{
+				ImGui::DragFloat3("Translate", glm::value_ptr(chest->obj.pos), 0.f, 1.f);
+				ImGui::ColorEdit4("Object Color", glm::value_ptr(chest->obj.color));
+				ImGui::Checkbox("Active ambient", &chest->obj.haveAmbient);
+				ImGui::Checkbox("Active diffuse", &chest->obj.haveDiffuse);
+				ImGui::Checkbox("Active specular", &chest->obj.haveSpecular);
+
+				ImGui::TreePop();
+			}
 
 			ImGui::TreePop();
 		}
 
-		if (ImGui::TreeNode("Simple Cube"))
+		if (ImGui::TreeNode("Billboard"))
 		{
 			ImGui::DragFloat3("Translate", glm::value_ptr(billboard->obj.pos), 0.f, 1.f);
 			ImGui::ColorEdit4("Object Color", glm::value_ptr(billboard->obj.color));
 			ImGui::Checkbox("Active ambient", &billboard->obj.haveAmbient);
 			ImGui::Checkbox("Active diffuse", &billboard->obj.haveDiffuse);
 			ImGui::Checkbox("Active specular", &billboard->obj.haveSpecular);
-
-			ImGui::TreePop();
-		}
-
-		if (ImGui::TreeNode("Sword"))
-		{
-			ImGui::DragFloat3("Translate", glm::value_ptr(sword->obj.pos), 0.f, 1.f);
-			ImGui::ColorEdit4("Object Color", glm::value_ptr(sword->obj.color));
-			ImGui::Checkbox("Active ambient", &sword->obj.haveAmbient);
-			ImGui::Checkbox("Active diffuse", &sword->obj.haveDiffuse);
-			ImGui::Checkbox("Active specular", &sword->obj.haveSpecular);
 
 			ImGui::TreePop();
 		}

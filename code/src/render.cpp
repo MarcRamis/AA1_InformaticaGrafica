@@ -39,7 +39,7 @@ bool isMatrix = false;
 float displaceX = 5.0f;
 float displaceY = 5.0f;
 
-Model *simpleCube;
+Model *billboard;
 Model *scenario;
 Model *sword;
 
@@ -241,7 +241,6 @@ void main() {\n\
 		glBindVertexArray(0);
 	}
 }
-
 ////////////////////////////////////////////////// CUBE
 namespace Cube {
 	GLuint cubeVao;
@@ -507,7 +506,7 @@ void MoveCamera()
 	//ACTIVATE DOLLY EFFECT
 	if (moveCamera)
 	{
-		float distance = RV::panv[2] - simpleCube->obj.pos.z;
+		float distance = RV::panv[2] - billboard->obj.pos.z;
 		RV::FOV = 2.f * glm::atan(0.5f * width / glm::abs(distance));
 	}
 	//RESET FOV
@@ -529,27 +528,27 @@ void InitModels()
 	
 	random = glm::vec3(randomX, randomY, randomZ);
 
-	// SIMPLE CUBLE
-	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo_billboard.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(1.f, 4.f, -15.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/cat.jpg"));
+	// BILLBOARD
+	billboard = new Model(Shader("res/files/vert.vs", "res/files/frag_billboard.fs", "res/files/geo_billboard.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(1.f, 4.f, -15.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/tree.png", Texture::ETextureType::PNG));
 	
-	simpleCube->vertices.clear();
-	simpleCube->normals.clear();
-	simpleCube->uvs.clear();
-	simpleCube->vertices.push_back(glm::vec3(0.0, 0.0, 0.0));
-	simpleCube->normals.push_back(glm::vec3(0.0, 0.0, 0.0));
-	simpleCube->uvs.push_back(glm::vec3(0.0, 0.0, 0.0));
+	billboard->vertices.clear();
+	billboard->normals.clear();
+	billboard->uvs.clear();
+	billboard->vertices.push_back(glm::vec3(0.0, 0.0, 0.0));
+	billboard->normals.push_back(glm::vec3(0.0, 0.0, 0.0));
+	billboard->uvs.push_back(glm::vec3(0.0, 0.0, 0.0));
 
 	// SWORD
 	sword = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo_explode.gs"), "res/espada.obj",
 		ObjectParameters(glm::vec3(-7.f, 2.f, -7.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/brick.jpg"));
+		Texture("res/brick.jpg", Texture::ETextureType::JPG));
 
 	// SCENARIO
 	scenario = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
 		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), true, true, false),
-		Texture("res/brick.jpg"));
+		Texture("res/brick.jpg", Texture::ETextureType::JPG));
 }
 
 // RENDER MODELS
@@ -648,48 +647,48 @@ void RenderModels()
 
 	// SIMPLE CUBE
 #pragma region Simple Cube
-	simpleCube->shader.Use();
+	billboard->shader.Use();
 
 	// Translate position
-	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
-	simpleCube->objMat = t;
+	t = glm::translate(glm::mat4(), glm::vec3(billboard->obj.pos));
+	billboard->objMat = t;
 
-	simpleCube->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(simpleCube->objMat));
-	simpleCube->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
-	simpleCube->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+	billboard->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(billboard->objMat));
+	billboard->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	billboard->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
-	simpleCube->shader.SetFloat("objColor", simpleCube->obj.color.x, simpleCube->obj.color.y, simpleCube->obj.color.z, simpleCube->obj.color.w);
+	billboard->shader.SetFloat("objColor", billboard->obj.color.x, billboard->obj.color.y, billboard->obj.color.z, billboard->obj.color.w);
 	
-	simpleCube->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
-	simpleCube->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
-	simpleCube->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
-	simpleCube->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+	billboard->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	billboard->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	billboard->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	billboard->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
 	
-	if (simpleCube->obj.haveAmbient) simpleCube->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
-	else simpleCube->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
-	if (simpleCube->obj.haveDiffuse) simpleCube->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
-	else simpleCube->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
-	if (simpleCube->obj.haveSpecular) simpleCube->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
-	else simpleCube->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+	if (billboard->obj.haveAmbient) billboard->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	else billboard->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	if (billboard->obj.haveDiffuse) billboard->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	else billboard->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	if (billboard->obj.haveSpecular) billboard->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	else billboard->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
 
-	simpleCube->shader.SetFloat("shininess", phong.shininess);
+	billboard->shader.SetFloat("shininess", phong.shininess);
 
-	simpleCube->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
+	billboard->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
 
-	simpleCube->shader.SetInt("isMatrix", isMatrix);
-	simpleCube->shader.SetFloat("displaceX", displaceX);
-	simpleCube->shader.SetFloat("displaceY", displaceY);
+	billboard->shader.SetInt("isMatrix", isMatrix);
+	billboard->shader.SetFloat("displaceX", displaceX);
+	billboard->shader.SetFloat("displaceY", displaceY);
 	
 	moveWTime = cos(currentTime);
-	simpleCube->shader.SetFloat("moveWTime", moveWTime);
+	billboard->shader.SetFloat("moveWTime", moveWTime);
 
-	simpleCube->shader.SetFloat("time", currentTime);
-	simpleCube->shader.SetFloat("random", random.x,random.y,random.z);
+	billboard->shader.SetFloat("time", currentTime);
+	billboard->shader.SetFloat("random", random.x,random.y,random.z);
 
-	simpleCube->texture.Active();
-	simpleCube->shader.SetInt("ourTexture", 0);
+	billboard->texture.Active();
+	billboard->shader.SetInt("ourTexture", 0);
 	
-	simpleCube->DrawPoints();
+	billboard->DrawPoints();
 
 #pragma endregion
 }
@@ -714,14 +713,8 @@ void GLcleanup() {
 
 	sword->texture.Clean();
 	scenario->texture.Clean();
-	simpleCube->texture.Clean();
+	billboard->texture.Clean();
 }
-
-#pragma region Dolly Effect
-
-
-
-#pragma endregion
 
 void GLrender(float dt) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -783,11 +776,11 @@ void GUI() {
 
 		if (ImGui::TreeNode("Simple Cube"))
 		{
-			ImGui::DragFloat3("Translate", glm::value_ptr(simpleCube->obj.pos), 0.f, 1.f);
-			ImGui::ColorEdit4("Object Color", glm::value_ptr(simpleCube->obj.color));
-			ImGui::Checkbox("Active ambient", &simpleCube->obj.haveAmbient);
-			ImGui::Checkbox("Active diffuse", &simpleCube->obj.haveDiffuse);
-			ImGui::Checkbox("Active specular", &simpleCube->obj.haveSpecular);
+			ImGui::DragFloat3("Translate", glm::value_ptr(billboard->obj.pos), 0.f, 1.f);
+			ImGui::ColorEdit4("Object Color", glm::value_ptr(billboard->obj.color));
+			ImGui::Checkbox("Active ambient", &billboard->obj.haveAmbient);
+			ImGui::Checkbox("Active diffuse", &billboard->obj.haveDiffuse);
+			ImGui::Checkbox("Active specular", &billboard->obj.haveSpecular);
 
 			ImGui::TreePop();
 		}

@@ -18,8 +18,6 @@ Model::Model(Shader _shader, const char* path, ObjectParameters objParameters, T
 	// READ MODEL
 	ReadFile(vertices, uvs, normals, path);
 	bool res = loadOBJ(path, vertices, uvs, normals);
-	if (res) std::cout << "Model has been read" << std::endl;
-	else std::cout << "Model couldn't be read" << std::endl;
 	
 	// INITIALIZE MODEL
 	glGenVertexArrays(1, &vao);
@@ -45,13 +43,14 @@ Model::Model(Shader _shader, const char* path, ObjectParameters objParameters, T
 	glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	//glDeleteBuffers(3, vbo);
-	//glDeleteVertexArrays(1, &vao);
 }
 
 Model::~Model()
 {
+	vertices.clear();
+	normals.clear();
+	uvs.clear();
+
 	glDeleteBuffers(3, vbo);
 	glDeleteVertexArrays(1, &vao);
 }
@@ -63,7 +62,6 @@ void Model::DrawTriangles()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glBindVertexArray(vao);
 	glDrawArrays(GL_TRIANGLES, 0, vertices.size());
-	glDrawElements(GL_TRIANGLE_STRIP, uvs.size(), GL_UNSIGNED_INT, 0);
 	
 	glBindVertexArray(0);
 	glUseProgram(0);
@@ -76,7 +74,6 @@ void Model::DrawPoints()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glBindVertexArray(vao);
 	glDrawArrays(GL_POINTS, 0, vertices.size());
-	glDrawElements(GL_TRIANGLE_STRIP, uvs.size(), GL_UNSIGNED_INT, 0);
 
 	glBindVertexArray(0);
 	glUseProgram(0);

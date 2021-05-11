@@ -39,6 +39,8 @@ bool isMatrix = false;
 float displaceX = 5.0f;
 float displaceY = 5.0f;
 
+bool test;
+
 Model *billboard;
 Model *scenario;
 Model *sword;
@@ -46,11 +48,13 @@ Model *anvil;
 Model *box;
 Model *chest;
 
+Model *simpleCube;
+
 Light phong = Light(glm::vec4(0.f,0.f,1.f, 1.f), 
 	glm::vec4(1.f,1.f,1.f,1.f), glm::vec4(1.f, 1.f, 1.f,1.f), glm::vec4(1.f, 0.f, 0.f,1.f),
 	0.2f,0.3f,0.5f,30.f);
 
-///////////////////// TEACHER FUNCTIONS
+// TEACHER FUNCTIONS
 #pragma region Teacher functions
 
 GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name = "") {
@@ -503,6 +507,7 @@ namespace Cube {
 
 #pragma endregion
 
+#pragma region AA1
 // DOLLY FUNCTION
 void MoveCamera()
 {
@@ -518,7 +523,11 @@ void MoveCamera()
 		RV::FOV = glm::radians(radians);
 	}
 }
+#pragma endregion
 
+#pragma region AA2
+// INIT MODELS
+/*
 void InitModels()
 {
 	srand(time(nullptr));
@@ -842,7 +851,76 @@ void RenderModels()
 
 #pragma endregion
 }
+*/
+#pragma endregion
 
+#pragma region AA3
+
+void InitModels()
+{
+	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, true),
+		Texture("res/white.jpg", Texture::ETextureType::JPG));
+}
+
+void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
+{
+	float currentTime = ImGui::GetTime();
+
+	model->shader.Use();
+	
+	model->objMat = _t * _s;
+
+	model->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(model->objMat));
+	model->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	model->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+
+	model->shader.SetFloat("objColor", model->obj.color.x, model->obj.color.y, model->obj.color.z, model->obj.color.w);
+
+	// PHONG UNIFORMS
+	model->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	model->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	model->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	model->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+
+	if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	else model->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	else model->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	else model->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+
+	model->shader.SetFloat("shininess", phong.shininess);
+
+	model->shader.SetFloat("time", currentTime);
+	model->shader.SetFloat("random", random.x, random.y, random.z);
+
+	model->shader.SetInt("isMatrix", isMatrix);
+	model->shader.SetFloat("displaceX", displaceX);
+	model->shader.SetFloat("displaceY", displaceY);
+
+	model->texture.Active();
+	model->shader.SetInt("ourTexture", 0);
+
+	if (test)
+	{
+		model->DrawFrameBuffer(RenderVars::_MVP, RenderVars::_modelView, RenderVars::_projection);
+	}
+
+	model->DrawTriangles();
+}
+void RenderModels()
+{
+	glm::mat4 t, s;
+	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(1.0f, 1.0f, 1.0f));
+	
+	SetValues(simpleCube, t, s);
+}
+
+#pragma endregion
+
+// RENDER STATE
 void GLinit(int width, int height) {
 	glViewport(0, 0, width, height);
 	glClearColor(0.2f, 0.2f, 0.2f, 1.f);
@@ -860,13 +938,20 @@ void GLinit(int width, int height) {
 }
 void GLcleanup() {
 	Axis::cleanupAxis();
-
+	
+	#pragma region OLD
+	/*
 	sword->texture.Clean();
 	anvil->texture.Clean();
+	box->texture.Clean();
+	chest->texture.Clean();
 	scenario->texture.Clean();
 	billboard->texture.Clean();
-}
+	*/
 
+#pragma endregion
+	
+}
 void GLrender(float dt) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -888,16 +973,18 @@ void GLrender(float dt) {
 	Axis::drawAxis();
 	
 	RenderModels();
+	
 	ImGui::Render();
 }
 
+// INTERFACE
 void GUI() {
 	bool show = true;
 	ImGui::Begin("Physics Parameters", &show, 0);
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		/////////////////////////////////////////////////////////
-		
+
 		if (ImGui::TreeNode("Phong Shading"))
 		{
 			ImGui::SliderFloat3("Light Position", glm::value_ptr(phong.pos), -1.f, 1.f);
@@ -910,9 +997,13 @@ void GUI() {
 			ImGui::SliderFloat("Diffuse Strength", &phong.diffuse_strength, 0.0f, 1.0f);
 			ImGui::SliderFloat("Specular Strength", &phong.specular_strength, 0.0f, 1.0f);
 			ImGui::SliderFloat("Shininess", &phong.shininess, 0, 255);
-			
+
 			ImGui::TreePop();
 		}
+
+		#pragma region OLD
+		
+		/*
 		if (ImGui::TreeNode("Scenario"))
 		{
 			if (ImGui::TreeNode("Ground"))
@@ -997,8 +1088,23 @@ void GUI() {
 			ImGui::DragFloat("Displace in Y", &displaceY, 0.1f, 0.0f,50.f);
 		}
 
+		*/
+#pragma endregion
+
+		if (ImGui::TreeNode("Cube"))
+		{
+			ImGui::DragFloat3("Translate", glm::value_ptr(simpleCube->obj.pos), 0.f, 1.f);
+			ImGui::ColorEdit4("Object Color", glm::value_ptr(simpleCube->obj.color));
+			ImGui::Checkbox("Active ambient", &simpleCube->obj.haveAmbient);
+			ImGui::Checkbox("Active diffuse", &simpleCube->obj.haveDiffuse);
+			ImGui::Checkbox("Active specular", &simpleCube->obj.haveSpecular);
+
+			ImGui::TreePop();
+		}
+		ImGui::Checkbox("Frame Buffer", &test);
 		/////////////////////////////////////////////////////////
 	}
+
 	// .........................
 	
 	ImGui::End();

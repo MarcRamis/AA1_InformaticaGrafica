@@ -22,6 +22,7 @@ Model::Model(Shader _shader, const char* path, ObjectParameters objParameters, T
 	// INITIALIZE MODEL
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
+	
 	glGenBuffers(3, vbo);
 	
 	// Vertices
@@ -43,6 +44,17 @@ Model::Model(Shader _shader, const char* path, ObjectParameters objParameters, T
 	glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	// INIT FBO TEXTURE
+	glGenFramebuffers(1, &fbo);
+	// CREATE TEXTURE AS WE CREATE IT IN TEXTURE
+	fbo_Tex = Texture(_texture.m_Path,Texture::ETextureType::NONE);
+	
+	// BIND TEXTURE
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_Tex.id, 0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 Model::~Model()
@@ -67,7 +79,6 @@ void Model::DrawTriangles()
 	glUseProgram(0);
 	glDisable(GL_BLEND);
 }
-
 void Model::DrawPoints()
 {
 	glEnable(GL_BLEND);
@@ -78,4 +89,33 @@ void Model::DrawPoints()
 	glBindVertexArray(0);
 	glUseProgram(0);
 	glDisable(GL_BLEND);
+}
+
+void Model::DrawFrameBuffer(glm::mat4 _MVP, glm::mat4 _ModelView, glm::mat4 _projection)
+{
+	//we store the current values in a temporary variable
+	glm::mat4 t_mvp = _MVP;
+	glm::mat4 t_mv = _ModelView;
+
+	// we set up our framebuffer and draw into it
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	//glClearColor(1.f, 1.f, 1.f, 1.f);
+	glViewport(0, 0, 800, 800);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT);
+	//glEnable(GL_DEPTH_TEST);
+	_MVP = _projection;
+	_ModelView = glm::mat4(1.f);
+	
+	//we restore the previous conditions
+	_MVP = t_mvp;
+	_ModelView = t_mv;
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
+	//we set up a texture where to draw our FBO:
+	glViewport(0, 0, fbo_Tex.width, fbo_Tex.height);
+	glBindTexture(GL_TEXTURE_2D, fbo_Tex.id);
+
+	DrawTriangles();
 }

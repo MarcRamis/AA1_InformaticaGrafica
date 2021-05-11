@@ -6,7 +6,7 @@
 
 
 Texture::Texture() {}
-Texture::Texture(const char* path, ETextureType type) 
+Texture::Texture(const char* path, ETextureType type) : m_Path(path)
 {
 	if (path != nullptr)
 	{
@@ -19,6 +19,11 @@ Texture::Texture(const char* path, ETextureType type)
 
 		switch (type)
 		{
+			case ETextureType::NONE:
+
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+				break;
+
 			case ETextureType::JPG:
 				if (data) {
 					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -50,12 +55,10 @@ Texture::Texture(const char* path, ETextureType type)
 
 Texture::~Texture()
 {
-	//stbi_image_free(data);
 }
 
 void Texture::Clean()
 {
-	//stbi_image_free(data);
 	glDeleteTextures(1, &id);
 }
 

@@ -32,9 +32,10 @@ struct ObjectParameters
 class Model
 {
 public:
-	GLuint vao;
-	GLuint vbo[3];
-
+	unsigned int vao;
+	unsigned int vbo[3];
+	unsigned int fbo;
+	
 	glm::mat4 objMat = glm::mat4(1.f);
 
 	std::vector< glm::vec3 > vertices;
@@ -42,7 +43,7 @@ public:
 	std::vector< glm::vec3 > normals;
 	
 	Shader shader;
-	Texture texture;
+	Texture texture,fbo_Tex;
 	ObjectParameters obj;
 
 	Model();
@@ -52,4 +53,6 @@ public:
 
 	void DrawTriangles();
 	void DrawPoints();
+
+	void DrawFrameBuffer(glm::mat4 t_mvp, glm::mat4 t_mv, glm::mat4 _projection);
 };

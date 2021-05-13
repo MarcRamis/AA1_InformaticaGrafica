@@ -39,8 +39,7 @@ bool isMatrix = false;
 float displaceX = 5.0f;
 float displaceY = 5.0f;
 
-bool test;
-
+// MODELS
 Model *billboard;
 Model *scenario;
 Model *sword;
@@ -50,9 +49,19 @@ Model *chest;
 
 Model *simpleCube;
 
+// PHONG SHADER
+bool isPhongS = false;
 Light phong = Light(glm::vec4(0.f,0.f,1.f, 1.f), 
 	glm::vec4(1.f,1.f,1.f,1.f), glm::vec4(1.f, 1.f, 1.f,1.f), glm::vec4(1.f, 0.f, 0.f,1.f),
 	0.2f,0.3f,0.5f,30.f);
+
+// TOON SHADER
+bool isToonS = true;
+Light toon = Light(glm::vec4(1.f, 1.f, 1.f, 1.f),
+	glm::vec4(1.f, 1.f, 1.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 1.f), glm::vec4(1.f, 0.f, 0.f, 1.f),
+	0.2f, 0.3f, 0.5f, 30.f);
+
+bool test;
 
 // TEACHER FUNCTIONS
 #pragma region Teacher functions
@@ -858,8 +867,8 @@ void RenderModels()
 
 void InitModels()
 {
-	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, true),
+	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag_toon.fs", "res/files/geo.gs"), "res/anvil.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, true),
 		Texture("res/white.jpg", Texture::ETextureType::JPG));
 }
 
@@ -876,29 +885,56 @@ void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 	model->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
 	model->shader.SetFloat("objColor", model->obj.color.x, model->obj.color.y, model->obj.color.z, model->obj.color.w);
-
+	
 	// PHONG UNIFORMS
-	model->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
-	model->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
-	model->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
-	model->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+	//if (isPhongS)
+	//{
+	//	model->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	//	model->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	//	model->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	//	model->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+	//
+	//	if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	//	else model->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	//	if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	//	else model->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	//	if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	//	else model->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+	//
+	//	model->shader.SetFloat("shininess", phong.shininess);
+	//}
 
-	if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
-	else model->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
-	if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
-	else model->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
-	if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
-	else model->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+	// TOON UNIFORMS
+	if (isToonS)
+	{
+		model->shader.SetFloat("dir_light", toon.pos.x, toon.pos.y, toon.pos.z, 1.f);
+		model->shader.SetFloat("ambient_color", toon.ambient_color.x, toon.ambient_color.y, toon.ambient_color.z, toon.ambient_color.w);
+		model->shader.SetFloat("diffuse_color", toon.diffuse_color.x, toon.diffuse_color.y, toon.diffuse_color.z, toon.diffuse_color.w);
+		//model->shader.SetFloat("specular_color", toon.specular_color.x * 0.f, toon.specular_color.y * 0.f, toon.specular_color.z * 0.f, toon.specular_color.w * 0.f);
 
-	model->shader.SetFloat("shininess", phong.shininess);
-
+		if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", toon.ambient_strength, toon.ambient_strength, toon.ambient_strength, 1.f);
+		else model->shader.SetFloat("ambient_strength", toon.ambient_strength * 0.f, toon.ambient_strength * 0.f, toon.ambient_strength * 0.f, 1.f);
+		if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", toon.diffuse_strength, toon.diffuse_strength, toon.diffuse_strength, 1.f);
+		else model->shader.SetFloat("diffuse_strength", toon.diffuse_strength * 0.f, toon.diffuse_strength * 0.f, toon.diffuse_strength * 0.f, 1.f);
+		//if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", toon.specular_strength * 0.f, toon.specular_strength * 0.f, toon.specular_strength * 0.f, 1.f);
+		//else model->shader.SetFloat("specular_strength", toon.specular_strength * 0.f, toon.specular_strength * 0.f, toon.specular_strength * 0.f, 1.f);
+		//
+		//model->shader.SetFloat("shininess", toon.shininess * 0.f);
+	}
+	
 	model->shader.SetFloat("time", currentTime);
 	model->shader.SetFloat("random", random.x, random.y, random.z);
 
 	model->shader.SetInt("isMatrix", isMatrix);
-	model->shader.SetFloat("displaceX", displaceX);
-	model->shader.SetFloat("displaceY", displaceY);
 
+	if (isMatrix) {
+		model->shader.SetFloat("displaceX", displaceX);
+		model->shader.SetFloat("displaceY", displaceY);
+	}
+	else {
+		model->shader.SetFloat("displaceX", 0.f);
+		model->shader.SetFloat("displaceY", 0.f);
+	}
 	model->texture.Active();
 	model->shader.SetInt("ourTexture", 0);
 
@@ -985,22 +1021,47 @@ void GUI() {
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		/////////////////////////////////////////////////////////
 
-		if (ImGui::TreeNode("Phong Shading"))
+		//ImGui::Checkbox("Use Phong shader", &isPhongS);
+		if (isPhongS)
 		{
-			ImGui::SliderFloat3("Light Position", glm::value_ptr(phong.pos), -1.f, 1.f);
+			if (ImGui::TreeNode("Phong Shading"))
+			{
+				ImGui::SliderFloat3("Light Position", glm::value_ptr(phong.pos), -1.f, 1.f);
 
-			ImGui::ColorEdit4("Ambient Color", glm::value_ptr(phong.ambient_color));
-			ImGui::ColorEdit4("Diffuse Color", glm::value_ptr(phong.diffuse_color));
-			ImGui::ColorEdit4("Specular Color", glm::value_ptr(phong.specular_color));
+				ImGui::ColorEdit4("Ambient Color", glm::value_ptr(phong.ambient_color));
+				ImGui::ColorEdit4("Diffuse Color", glm::value_ptr(phong.diffuse_color));
+				ImGui::ColorEdit4("Specular Color", glm::value_ptr(phong.specular_color));
 
-			ImGui::SliderFloat("Ambient Strength", &phong.ambient_strength, 0.0f, 1.0f);
-			ImGui::SliderFloat("Diffuse Strength", &phong.diffuse_strength, 0.0f, 1.0f);
-			ImGui::SliderFloat("Specular Strength", &phong.specular_strength, 0.0f, 1.0f);
-			ImGui::SliderFloat("Shininess", &phong.shininess, 0, 255);
+				ImGui::SliderFloat("Ambient Strength", &phong.ambient_strength, 0.0f, 1.0f);
+				ImGui::SliderFloat("Diffuse Strength", &phong.diffuse_strength, 0.0f, 1.0f);
+				ImGui::SliderFloat("Specular Strength", &phong.specular_strength, 0.0f, 1.0f);
+				ImGui::SliderFloat("Shininess", &phong.shininess, 0, 255);
 
-			ImGui::TreePop();
+				ImGui::TreePop();
+			}
 		}
+		
+		ImGui::Checkbox("Use Toon shader", &isToonS);
+		if (isToonS)
+		{
+			if (ImGui::TreeNode("Toon Shading"))
+			{
+				ImGui::SliderFloat3("Light Position", glm::value_ptr(toon.pos), -1.f, 1.f);
 
+				ImGui::ColorEdit4("Ambient Color", glm::value_ptr(toon.ambient_color));
+				ImGui::ColorEdit4("Diffuse Color", glm::value_ptr(toon.diffuse_color));
+				ImGui::ColorEdit4("Specular Color", glm::value_ptr(toon.specular_color));
+
+				ImGui::SliderFloat("Ambient Strength", &toon.ambient_strength, 0.0f, 1.0f);
+				ImGui::SliderFloat("Diffuse Strength", &toon.diffuse_strength, 0.0f, 1.0f);
+				ImGui::SliderFloat("Specular Strength", &toon.specular_strength, 0.0f, 1.0f);
+				ImGui::SliderFloat("Shininess", &toon.shininess, 0, 255);
+
+				ImGui::TreePop();
+			}
+
+		}
+		
 		#pragma region OLD
 		
 		/*
@@ -1081,15 +1142,18 @@ void GUI() {
 			ImGui::SliderFloat("PosZ", &RV::panv[2], -20, -6);
 		}
 		
+
+
+		*/
+
+#pragma endregion
+
 		ImGui::Checkbox("Discard Effect", &isMatrix);
 		if (isMatrix)
 		{
-			ImGui::DragFloat("Displace in X", &displaceX, 0.1f, 0.0f,50.f);
-			ImGui::DragFloat("Displace in Y", &displaceY, 0.1f, 0.0f,50.f);
+			ImGui::DragFloat("Displace in X", &displaceX, 0.1f, 0.0f, 50.f);
+			ImGui::DragFloat("Displace in Y", &displaceY, 0.1f, 0.0f, 50.f);
 		}
-
-		*/
-#pragma endregion
 
 		if (ImGui::TreeNode("Cube"))
 		{

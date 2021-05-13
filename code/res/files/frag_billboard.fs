@@ -44,22 +44,19 @@
 		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);
 		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular_strength * specular_color;
 		
-		// DISCARD EFFECT
-		if(isMatrix)
-		{
-			if(mod(gl_FragCoord.x,displaceX) > 0.5 && mod(gl_FragCoord.y,displaceY) > 0.5)
-			{
-				discard;
-			}
-		}
-
 		// --- Texture
 		vec4 textureColor = texture(ourTexture,texCoord);
-
+		out_Color = textureColor * objColor * (ambientComp + diffuseComp + specularComp);
+		
+		// TEXTURE ALPHA -- ERASE BLACK
 		if(textureColor.r <= 0.01 && textureColor.g <= 0.01 && textureColor.b <= 0.01)
 		{
 			discard;
 		}
 
-		out_Color = textureColor * objColor * (ambientComp + diffuseComp + specularComp);
+		// DISCARD EFFECT
+		if(mod(gl_FragCoord.x,displaceX) > 0.5 && mod(gl_FragCoord.y,displaceY) > 0.5)
+		{
+			discard;
+		}
 	};

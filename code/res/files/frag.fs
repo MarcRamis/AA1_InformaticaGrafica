@@ -41,17 +41,16 @@
 		// --- Ambient
 		vec4 ambientComp = ambient_color * ambient_strength;
 		// --- Diffuse
-		vec4 diffuseComp = max(dot(normalize(vert_Normal), normalize(dir_light)),0.0) * diffuse_strength * diffuse_color;
+		vec4 diffuseComp = max(dot(normalize(vert_Normal), normalize(-dir_light)),0.0) * diffuse_strength * diffuse_color;
 		// --- Specular
-		vec4 viewDir = viewPos - fragPos;
-		vec4 reflectDir = reflect(normalize(-dir_light), vert_Normal);
+		vec3 viewDir = viewPos.xyz - fragPos.xyz;
+		vec3 reflectDir = reflect(normalize(dir_light.xyz), vert_Normal.xyz);
 		vec4 specularComp = pow(max(dot(normalize(viewDir), reflectDir),0.0),shininess) * specular_strength * specular_color;
-
+		
 		// --- Texture
 		vec4 textureColor = texture(ourTexture,texCoord);
 		out_Color = textureColor * objColor * (ambientComp + diffuseComp + specularComp); 
-
-		// DISCARD EFFECT
+		
 		if(mod(gl_FragCoord.x,displaceX) > 0.5 && mod(gl_FragCoord.y,displaceY) > 0.5)
 		{
 			discard;

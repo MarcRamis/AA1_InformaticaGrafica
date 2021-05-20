@@ -22,6 +22,8 @@
 #include "Model.h"
 
 ///////////////////// VARIABLES
+
+#pragma region Variables
 glm::vec4 wPos; // Camera pos
 float moveWTime = 0.0f; // move in world time
 
@@ -48,20 +50,27 @@ Model *box;
 Model *chest;
 
 Model *simpleCube;
+Model *simpleCubeOutline;
+Model *floorCube;
+Model *skyBoxCube;
+
+CubeMap *skyBox;
 
 // PHONG SHADER
-bool isPhongS = false;
+bool isPhongS = true;
 Light phong = Light(glm::vec4(0.f,0.f,1.f, 1.f), 
 	glm::vec4(1.f,1.f,1.f,1.f), glm::vec4(1.f, 1.f, 1.f,1.f), glm::vec4(1.f, 0.f, 0.f,1.f),
-	0.2f,0.3f,0.5f,30.f);
+	0.5f,0.5f,0.5f,30.f);
 
 // TOON SHADER
-bool isToonS = true;
+bool isToonS = false;
 Light toon = Light(glm::vec4(1.f, 1.f, 1.f, 1.f),
 	glm::vec4(1.f, 1.f, 1.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 1.f), glm::vec4(1.f, 0.f, 0.f, 1.f),
 	0.2f, 0.3f, 0.5f, 30.f);
 
 bool test;
+
+#pragma endregion
 
 // TEACHER FUNCTIONS
 #pragma region Teacher functions
@@ -106,7 +115,6 @@ namespace Axis {
 	void drawAxis();
 }
 ////////////////
-
 namespace RenderVars {
 	float FOV = glm::radians(radians);
 	const float zNear = 1.f;
@@ -160,7 +168,6 @@ void GLmousecb(MouseEvent ev) {
 	RV::prevMouse.lastx = ev.posx;
 	RV::prevMouse.lasty = ev.posy;
 }
-
 ////////////////////////////////////////////////// AXIS
 namespace Axis {
 	GLuint AxisVao;
@@ -863,15 +870,106 @@ void RenderModels()
 */
 #pragma endregion
 
+#pragma region Framebuffer
+
+namespace FB {
+
+	unsigned int fbo;
+	Texture fbo_Tex;
+	
+	void Init()
+	{
+		// INIT FBO TEXTURE
+		glGenFramebuffers(1, &fbo);
+		// CREATE TEXTURE AS WE CREATE IT IN TEXTURE
+		fbo_Tex = Texture("res/white.jpg", Texture::ETextureType::NONE);
+		// BIND TEXTURE
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_Tex.id, 0);
+		
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+	void Draw(glm::mat4 _MVP, glm::mat4 _ModelView, glm::mat4 _projection)
+	{
+		//we store the current values in a temporary variable
+		glm::mat4 t_mvp = _MVP;
+		glm::mat4 t_mv = _ModelView;
+
+		// we set up our framebuffer and draw into it
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		//glClearColor(1.f, 1.f, 1.f, 1.f);
+		glViewport(0, 0, 800, 800);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//glClear(GL_COLOR_BUFFER_BIT);
+		//glEnable(GL_DEPTH_TEST);
+		_MVP = _projection;
+		_ModelView = glm::mat4(1.f);
+
+		//we restore the previous conditions
+		_MVP = t_mvp;
+		_ModelView = t_mv;
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		//we set up a texture where to draw our FBO:
+		glViewport(0, 0, fbo_Tex.width, fbo_Tex.height);
+		glBindTexture(GL_TEXTURE_2D, fbo_Tex.id);
+	}	
+}
+
+#pragma endregion
+
 #pragma region AA3
 
 void InitModels()
 {
-	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag_toon.fs", "res/files/geo.gs"), "res/anvil.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, true),
-		Texture("res/white.jpg", Texture::ETextureType::JPG));
-}
+	// Init CubeMap
+	std::vector<std::string> faces
+	{
+			"res/skybox/right.jpg",
+			"res/skybox/left.jpg",
+			"res/skybox/top.jpg",
+			"res/skybox/bottom.jpg",
+			"res/skybox/front.jpg",
+			"res/skybox/back.jpg"
+	};
+	skyBox = new CubeMap(faces);
+	
+	// Init Models
+	skyBoxCube = new Model(Shader("res/files/vert_cubemap.vs", "res/files/frag_cubemap.fs", nullptr), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
+		Texture(nullptr, Texture::ETextureType::NONE));
 
+	//simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag_toon.fs", "res/files/geo.gs"), "res/anvil.obj",
+	//	ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, true),
+	//	Texture("res/white.jpg", Texture::ETextureType::JPG));
+
+	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/iron.jpg", Texture::ETextureType::JPG));
+
+	simpleCubeOutline = new Model(Shader("res/files/vert.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/iron.jpg", Texture::ETextureType::JPG));
+
+	floorCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, -2.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/iron2.jpg", Texture::ETextureType::JPG));
+
+	//FB::Init();
+
+}
+void SetValuesSkyBox(Model *model, unsigned int id)
+{
+	model->shader.Use();
+	
+	model->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	model->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+
+	model->shader.SetFloat("skybox", id);
+
+	model->DrawTriangles();
+}
 void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 {
 	float currentTime = ImGui::GetTime();
@@ -887,46 +985,48 @@ void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 	model->shader.SetFloat("objColor", model->obj.color.x, model->obj.color.y, model->obj.color.z, model->obj.color.w);
 	
 	// PHONG UNIFORMS
-	//if (isPhongS)
-	//{
-	//	model->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
-	//	model->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
-	//	model->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
-	//	model->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
-	//
-	//	if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
-	//	else model->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
-	//	if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
-	//	else model->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
-	//	if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
-	//	else model->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
-	//
-	//	model->shader.SetFloat("shininess", phong.shininess);
-	//}
+	if (isPhongS)
+	{
+		model->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+		model->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+		model->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+		model->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+	
+		if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+		else model->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+		if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+		else model->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+		if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+		else model->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+	
+		model->shader.SetFloat("shininess", phong.shininess);
+	}
 
 	// TOON UNIFORMS
-	if (isToonS)
-	{
-		model->shader.SetFloat("dir_light", toon.pos.x, toon.pos.y, toon.pos.z, 1.f);
-		model->shader.SetFloat("ambient_color", toon.ambient_color.x, toon.ambient_color.y, toon.ambient_color.z, toon.ambient_color.w);
-		model->shader.SetFloat("diffuse_color", toon.diffuse_color.x, toon.diffuse_color.y, toon.diffuse_color.z, toon.diffuse_color.w);
-		//model->shader.SetFloat("specular_color", toon.specular_color.x * 0.f, toon.specular_color.y * 0.f, toon.specular_color.z * 0.f, toon.specular_color.w * 0.f);
+	//if (isToonS)
+	//{
+	//	model->shader.SetFloat("dir_light", toon.pos.x, toon.pos.y, toon.pos.z, 1.f);
+	//	model->shader.SetFloat("ambient_color", toon.ambient_color.x, toon.ambient_color.y, toon.ambient_color.z, toon.ambient_color.w);
+	//	model->shader.SetFloat("diffuse_color", toon.diffuse_color.x, toon.diffuse_color.y, toon.diffuse_color.z, toon.diffuse_color.w);
+	//	//model->shader.SetFloat("specular_color", toon.specular_color.x * 0.f, toon.specular_color.y * 0.f, toon.specular_color.z * 0.f, toon.specular_color.w * 0.f);
+	//
+	//	if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", toon.ambient_strength, toon.ambient_strength, toon.ambient_strength, 1.f);
+	//	else model->shader.SetFloat("ambient_strength", toon.ambient_strength * 0.f, toon.ambient_strength * 0.f, toon.ambient_strength * 0.f, 1.f);
+	//	if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", toon.diffuse_strength, toon.diffuse_strength, toon.diffuse_strength, 1.f);
+	//	else model->shader.SetFloat("diffuse_strength", toon.diffuse_strength * 0.f, toon.diffuse_strength * 0.f, toon.diffuse_strength * 0.f, 1.f);
+	//	//if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", toon.specular_strength * 0.f, toon.specular_strength * 0.f, toon.specular_strength * 0.f, 1.f);
+	//	//else model->shader.SetFloat("specular_strength", toon.specular_strength * 0.f, toon.specular_strength * 0.f, toon.specular_strength * 0.f, 1.f);
+	//	//
+	//	//model->shader.SetFloat("shininess", toon.shininess * 0.f);
+	//}
 
-		if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", toon.ambient_strength, toon.ambient_strength, toon.ambient_strength, 1.f);
-		else model->shader.SetFloat("ambient_strength", toon.ambient_strength * 0.f, toon.ambient_strength * 0.f, toon.ambient_strength * 0.f, 1.f);
-		if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", toon.diffuse_strength, toon.diffuse_strength, toon.diffuse_strength, 1.f);
-		else model->shader.SetFloat("diffuse_strength", toon.diffuse_strength * 0.f, toon.diffuse_strength * 0.f, toon.diffuse_strength * 0.f, 1.f);
-		//if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", toon.specular_strength * 0.f, toon.specular_strength * 0.f, toon.specular_strength * 0.f, 1.f);
-		//else model->shader.SetFloat("specular_strength", toon.specular_strength * 0.f, toon.specular_strength * 0.f, toon.specular_strength * 0.f, 1.f);
-		//
-		//model->shader.SetFloat("shininess", toon.shininess * 0.f);
-	}
-	
+	model->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
+
 	model->shader.SetFloat("time", currentTime);
 	model->shader.SetFloat("random", random.x, random.y, random.z);
 
 	model->shader.SetInt("isMatrix", isMatrix);
-
+	
 	if (isMatrix) {
 		model->shader.SetFloat("displaceX", displaceX);
 		model->shader.SetFloat("displaceY", displaceY);
@@ -940,7 +1040,7 @@ void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 
 	if (test)
 	{
-		model->DrawFrameBuffer(RenderVars::_MVP, RenderVars::_modelView, RenderVars::_projection);
+		FB::Draw(RenderVars::_MVP, RenderVars::_modelView, RenderVars::_projection);
 	}
 
 	model->DrawTriangles();
@@ -948,10 +1048,49 @@ void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 void RenderModels()
 {
 	glm::mat4 t, s;
+
+	glDepthMask(GL_FALSE);
+	SetValuesSkyBox(skyBoxCube, skyBox->textureID);
+	glDepthMask(GL_TRUE);
+	
+	glEnable(GL_STENCIL_TEST);
+	glClear(GL_STENCIL_BUFFER_BIT); // Clear color &  stencil buffer (0 by default)
+	glStencilFunc(GL_ALWAYS, 1, 0xFF); // Set any stencil to 1
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	
+	// DESACTIVAR
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	glStencilMask(0x00);
+	
+	// AQUI SE PINTA TODO LO QUE NO TENGA OUTLINE
+	t = glm::translate(glm::mat4(), glm::vec3(floorCube->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(10.f, 1.0f, 10.f));
+	SetValues(floorCube, t, s);
+	
+	// ACTIVAR
+	glStencilMask(0xFF);
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	
 	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
 	s = glm::scale(glm::mat4(), glm::vec3(1.0f, 1.0f, 1.0f));
-	
 	SetValues(simpleCube, t, s);
+	
+	// DESACTIVA 
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	glStencilMask(0x00);
+	glDisable(GL_DEPTH_TEST);
+
+	// ACTIVA
+	// AQUI SE PINTA TODO LO QUE TENGA OUTLINE
+	// SE TIENE QUE UTILIZAR UN MODELO NUEVO PORQUE SI NO NO PODEMOS CARGAR EL OUTLINE
+
+	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(1.0f * 1.2f, 1.0f * 1.2f, 1.0f * 1.2f));
+	SetValues(simpleCubeOutline, t, s);
+
+	glStencilMask(0xFF);
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	glEnable(GL_DEPTH_TEST);
 }
 
 #pragma endregion
@@ -975,6 +1114,7 @@ void GLinit(int width, int height) {
 void GLcleanup() {
 	Axis::cleanupAxis();
 	
+	simpleCube->texture.Clean();
 	#pragma region OLD
 	/*
 	sword->texture.Clean();
@@ -1004,6 +1144,7 @@ void GLrender(float dt) {
 	wPos = glm::vec4(0.f, 0.f, 0.f, 1.f);
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
+
 	MoveCamera();	// dolly effect
 
 	Axis::drawAxis();
@@ -1021,7 +1162,7 @@ void GUI() {
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		/////////////////////////////////////////////////////////
 
-		//ImGui::Checkbox("Use Phong shader", &isPhongS);
+		ImGui::Checkbox("Use Phong shader", &isPhongS);
 		if (isPhongS)
 		{
 			if (ImGui::TreeNode("Phong Shading"))
@@ -1041,7 +1182,7 @@ void GUI() {
 			}
 		}
 		
-		ImGui::Checkbox("Use Toon shader", &isToonS);
+		//ImGui::Checkbox("Use Toon shader", &isToonS);
 		if (isToonS)
 		{
 			if (ImGui::TreeNode("Toon Shading"))
@@ -1059,7 +1200,6 @@ void GUI() {
 
 				ImGui::TreePop();
 			}
-
 		}
 		
 		#pragma region OLD
@@ -1148,13 +1288,6 @@ void GUI() {
 
 #pragma endregion
 
-		ImGui::Checkbox("Discard Effect", &isMatrix);
-		if (isMatrix)
-		{
-			ImGui::DragFloat("Displace in X", &displaceX, 0.1f, 0.0f, 50.f);
-			ImGui::DragFloat("Displace in Y", &displaceY, 0.1f, 0.0f, 50.f);
-		}
-
 		if (ImGui::TreeNode("Cube"))
 		{
 			ImGui::DragFloat3("Translate", glm::value_ptr(simpleCube->obj.pos), 0.f, 1.f);
@@ -1165,6 +1298,14 @@ void GUI() {
 
 			ImGui::TreePop();
 		}
+
+		ImGui::Checkbox("Discard Effect", &isMatrix);
+		if (isMatrix)
+		{
+			ImGui::DragFloat("Displace in X", &displaceX, 0.1f, 0.0f, 50.f);
+			ImGui::DragFloat("Displace in Y", &displaceY, 0.1f, 0.0f, 50.f);
+		}
+
 		ImGui::Checkbox("Frame Buffer", &test);
 		/////////////////////////////////////////////////////////
 	}

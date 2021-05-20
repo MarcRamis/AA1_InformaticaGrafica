@@ -34,7 +34,6 @@ class Model
 public:
 	unsigned int vao;
 	unsigned int vbo[3];
-	unsigned int fbo;
 	
 	glm::mat4 objMat = glm::mat4(1.f);
 
@@ -43,7 +42,7 @@ public:
 	std::vector< glm::vec3 > normals;
 	
 	Shader shader;
-	Texture texture,fbo_Tex;
+	Texture texture;
 	ObjectParameters obj;
 
 	Model();
@@ -54,5 +53,8 @@ public:
 	void DrawTriangles();
 	void DrawPoints();
 
-	void DrawFrameBuffer(glm::mat4 t_mvp, glm::mat4 t_mv, glm::mat4 _projection);
+	void ActiveDepth();
+	void ActiveStencil();
+
+	//void DrawFrameBuffer(glm::mat4 t_mvp, glm::mat4 t_mv, glm::mat4 _projection);
 };

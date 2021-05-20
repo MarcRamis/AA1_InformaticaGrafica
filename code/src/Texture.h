@@ -3,8 +3,7 @@
 #include <GL\glew.h>
 
 #include <iostream>
-
-
+#include <vector>
 
 class Texture
 {
@@ -24,4 +23,17 @@ public:
 
 	void Clean();
 	void Active();
+};
+
+class CubeMap
+{
+public:
+	unsigned int textureID;
+	int width, height, nrChannels;
+	unsigned char* data;
+
+	unsigned int vao;
+
+	CubeMap();
+	CubeMap(std::vector<std::string> faces);
 };

@@ -13,5 +13,6 @@
 	void main()
 	{
 		TexCoords = in_Position;
-		gl_Position = mvpMat * mv_Mat * vec4(in_Position, 1.0);
+		vec4 pos = mvpMat * mv_Mat * vec4(in_Position, 1.0);
+		gl_Position = pos.xyww;
 	};

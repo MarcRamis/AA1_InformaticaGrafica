@@ -1,7 +1,6 @@
 #include "Texture.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+
 
 Texture::Texture() {}
 Texture::Texture(const char* path, ETextureType type) : m_Path(path)

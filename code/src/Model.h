@@ -49,12 +49,9 @@ public:
 	Model(Shader _shader, const char* path, ObjectParameters objParameters, Texture _texture);
 
 	~Model();
+	
+	void UpdateTransform(glm::vec3 transform, glm::vec3 scale, glm::vec3 rotation);
 
 	void DrawTriangles();
 	void DrawPoints();
-
-	void ActiveDepth();
-	void ActiveStencil();
-
-	//void DrawFrameBuffer(glm::mat4 t_mvp, glm::mat4 t_mv, glm::mat4 _projection);
 };

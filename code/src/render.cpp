@@ -21,16 +21,14 @@
 
 #include "Model.h"
 
-///////////////////// VARIABLES
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
+// VARIABLES
 #pragma region Variables
-glm::vec4 wPos; // Camera pos
-float moveWTime = 0.0f; // move in world time
 
-// DOLLY EFFECT
-float width = 16.f;
-float radians = 65.f;
-bool moveCamera = false;
+glm::vec4 wPos;			// Camera pos
+float moveWTime = 0.0f; // move in world time
 
 // Random explode
 float randomX, randomY, randomZ;
@@ -42,37 +40,24 @@ float displaceX = 5.0f;
 float displaceY = 5.0f;
 
 // MODELS
-Model *billboard;
-Model *scenario;
-Model *sword;
-Model *anvil;
-Model *box;
-Model *chest;
-
 Model *simpleCube;
 Model *simpleCubeOutline;
 Model *floorCube;
 Model *skyBoxCube;
+Model *car;
 
 CubeMap *skyBox;
 
 // PHONG SHADER
-bool isPhongS = true;
 Light phong = Light(glm::vec4(0.f,0.f,1.f, 1.f), 
 	glm::vec4(1.f,1.f,1.f,1.f), glm::vec4(1.f, 1.f, 1.f,1.f), glm::vec4(1.f, 0.f, 0.f,1.f),
-	0.5f,0.5f,0.5f,30.f);
-
-// TOON SHADER
-bool isToonS = false;
-Light toon = Light(glm::vec4(1.f, 1.f, 1.f, 1.f),
-	glm::vec4(1.f, 1.f, 1.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 1.f), glm::vec4(1.f, 0.f, 0.f, 1.f),
-	0.2f, 0.3f, 0.5f, 30.f);
+	0.5f,0.5f,0.5f,1.f);
 
 bool test;
 
 #pragma endregion
 
-// TEACHER FUNCTIONS
+// TEACHER UTILS
 #pragma region Teacher functions
 
 GLuint compileShader(const char* shaderStr, GLenum shaderType, const char* name = "") {
@@ -116,7 +101,7 @@ namespace Axis {
 }
 ////////////////
 namespace RenderVars {
-	float FOV = glm::radians(radians);
+	const float FOV = glm::radians(65.f);
 	const float zNear = 1.f;
 	const float zFar = 50.f;
 
@@ -523,24 +508,7 @@ namespace Cube {
 
 #pragma endregion
 
-#pragma region AA1
-// DOLLY FUNCTION
-void MoveCamera()
-{
-	//ACTIVATE DOLLY EFFECT
-	if (moveCamera)
-	{
-		float distance = RV::panv[2] - billboard->obj.pos.z;
-		RV::FOV = 2.f * glm::atan(0.5f * width / glm::abs(distance));
-	}
-	//RESET FOV
-	else
-	{
-		RV::FOV = glm::radians(radians);
-	}
-}
-#pragma endregion
-
+// FRAMEBUFFER
 #pragma region Framebuffer
 
 namespace FB {
@@ -590,6 +558,40 @@ namespace FB {
 
 #pragma endregion
 
+// STENCIL BUFFER
+#pragma region StencilBuffer
+
+namespace StencilBuffer{
+	void EnableStencil()
+	{
+		glEnable(GL_STENCIL_TEST);
+		glClear(GL_STENCIL_BUFFER_BIT); // Clear color &  stencil buffer (0 by default)
+		glStencilFunc(GL_ALWAYS, 1, 0xFF); // Set any stencil to 1
+		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	}
+	void On()
+	{
+		glStencilMask(0xFF);
+		glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	}
+	void Off()
+	{
+		glStencilMask(0x00);
+		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	}
+
+	void EnableDepth()
+	{
+		glEnable(GL_DEPTH_TEST);
+	}
+	void DisableDepth()
+	{
+		glDisable(GL_DEPTH_TEST);
+	}
+}
+
+#pragma endregion
+
 #pragma region AA3
 
 void InitModels()
@@ -606,15 +608,15 @@ void InitModels()
 	};
 	skyBox = new CubeMap(faces);
 	
-	// Init Models
 	skyBoxCube = new Model(Shader("res/files/vert_cubemap.vs", "res/files/frag_cubemap.fs", nullptr), "res/cube.obj",
 		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
 		Texture(nullptr, Texture::ETextureType::NONE));
 
+	// Init Models
 	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
 		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
 		Texture("res/iron.jpg", Texture::ETextureType::JPG));
-
+	
 	simpleCubeOutline = new Model(Shader("res/files/vert.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/cube.obj",
 		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
 		Texture("res/iron.jpg", Texture::ETextureType::JPG));
@@ -622,15 +624,18 @@ void InitModels()
 	floorCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
 		ObjectParameters(glm::vec3(0.f, -2.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
 		Texture("res/iron2.jpg", Texture::ETextureType::JPG));
-
-	//FB::Init();
-
+	
+	stbi_set_flip_vertically_on_load(true);
+	car = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/Camaro.obj",
+		ObjectParameters(glm::vec3(-5.f, -2.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+	stbi_set_flip_vertically_on_load(false);
 }
 void SetValuesSkyBox(Model *model, unsigned int id)
 {
 	model->shader.Use();
 	
-	model->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	model->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(model->objMat));
 	model->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
 
 	model->shader.SetFloat("skybox", id);
@@ -651,41 +656,19 @@ void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 
 	model->shader.SetFloat("objColor", model->obj.color.x, model->obj.color.y, model->obj.color.z, model->obj.color.w);
 	
-	// PHONG UNIFORMS
-	if (isPhongS)
-	{
-		model->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
-		model->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
-		model->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
-		model->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
-	
-		if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
-		else model->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
-		if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
-		else model->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
-		if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
-		else model->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
-	
-		model->shader.SetFloat("shininess", phong.shininess);
-	}
+	model->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	model->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	model->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	model->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
 
-	// TOON UNIFORMS
-	//if (isToonS)
-	//{
-	//	model->shader.SetFloat("dir_light", toon.pos.x, toon.pos.y, toon.pos.z, 1.f);
-	//	model->shader.SetFloat("ambient_color", toon.ambient_color.x, toon.ambient_color.y, toon.ambient_color.z, toon.ambient_color.w);
-	//	model->shader.SetFloat("diffuse_color", toon.diffuse_color.x, toon.diffuse_color.y, toon.diffuse_color.z, toon.diffuse_color.w);
-	//	//model->shader.SetFloat("specular_color", toon.specular_color.x * 0.f, toon.specular_color.y * 0.f, toon.specular_color.z * 0.f, toon.specular_color.w * 0.f);
-	//
-	//	if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", toon.ambient_strength, toon.ambient_strength, toon.ambient_strength, 1.f);
-	//	else model->shader.SetFloat("ambient_strength", toon.ambient_strength * 0.f, toon.ambient_strength * 0.f, toon.ambient_strength * 0.f, 1.f);
-	//	if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", toon.diffuse_strength, toon.diffuse_strength, toon.diffuse_strength, 1.f);
-	//	else model->shader.SetFloat("diffuse_strength", toon.diffuse_strength * 0.f, toon.diffuse_strength * 0.f, toon.diffuse_strength * 0.f, 1.f);
-	//	//if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", toon.specular_strength * 0.f, toon.specular_strength * 0.f, toon.specular_strength * 0.f, 1.f);
-	//	//else model->shader.SetFloat("specular_strength", toon.specular_strength * 0.f, toon.specular_strength * 0.f, toon.specular_strength * 0.f, 1.f);
-	//	//
-	//	//model->shader.SetFloat("shininess", toon.shininess * 0.f);
-	//}
+	if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	else model->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	else model->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	else model->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+
+	model->shader.SetFloat("shininess", phong.shininess);
 
 	model->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
 
@@ -717,47 +700,39 @@ void RenderModels()
 	glm::mat4 t, s;
 
 	glDepthMask(GL_FALSE);
+	t = glm::translate(glm::mat4(), glm::vec3(skyBoxCube->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(10.f, 10.0f, 10.f));
+	skyBoxCube->objMat = t * s;
 	SetValuesSkyBox(skyBoxCube, skyBox->textureID);
 	glDepthMask(GL_TRUE);
 	
-	glEnable(GL_STENCIL_TEST);
-	glClear(GL_STENCIL_BUFFER_BIT); // Clear color &  stencil buffer (0 by default)
-	glStencilFunc(GL_ALWAYS, 1, 0xFF); // Set any stencil to 1
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	StencilBuffer::EnableStencil();
+	StencilBuffer::Off();		// Here we draw all that doesn't contain an outline
 	
-	// DESACTIVAR
-	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-	glStencilMask(0x00);
-	
-	// AQUI SE PINTA TODO LO QUE NO TENGA OUTLINE
 	t = glm::translate(glm::mat4(), glm::vec3(floorCube->obj.pos));
 	s = glm::scale(glm::mat4(), glm::vec3(10.f, 1.0f, 10.f));
 	SetValues(floorCube, t, s);
+
+	t = glm::translate(glm::mat4(), glm::vec3(car->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+	SetValues(car, t, s);
 	
-	// ACTIVAR
-	glStencilMask(0xFF);
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	StencilBuffer::On();	// Here we draw all that contain an outline
 	
 	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
 	s = glm::scale(glm::mat4(), glm::vec3(1.0f, 1.0f, 1.0f));
 	SetValues(simpleCube, t, s);
 	
-	// DESACTIVA 
-	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-	glStencilMask(0x00);
-	glDisable(GL_DEPTH_TEST);
-
-	// ACTIVA
-	// AQUI SE PINTA TODO LO QUE TENGA OUTLINE
-	// SE TIENE QUE UTILIZAR UN MODELO NUEVO PORQUE SI NO NO PODEMOS CARGAR EL OUTLINE
+	StencilBuffer::Off();
+	StencilBuffer::DisableDepth();	// Here we draw the outline of the same object.
+									// It must be bigger than the object
 
 	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
 	s = glm::scale(glm::mat4(), glm::vec3(1.0f * 1.2f, 1.0f * 1.2f, 1.0f * 1.2f));
 	SetValues(simpleCubeOutline, t, s);
-
-	glStencilMask(0xFF);
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
-	glEnable(GL_DEPTH_TEST);
+	
+	StencilBuffer::On();	// Set on because if not, it will draw the object in the screen
+	StencilBuffer::EnableDepth();
 }
 
 #pragma endregion
@@ -779,26 +754,10 @@ void GLinit(int width, int height) {
 	InitModels();
 }
 void GLcleanup() {
-	Axis::cleanupAxis();
-	
-	simpleCube->texture.Clean();
-	#pragma region OLD
-	/*
-	sword->texture.Clean();
-	anvil->texture.Clean();
-	box->texture.Clean();
-	chest->texture.Clean();
-	scenario->texture.Clean();
-	billboard->texture.Clean();
-	*/
-
-#pragma endregion
-	
+	Axis::cleanupAxis();	
 }
 void GLrender(float dt) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	RV::_projection = glm::perspective(RV::FOV, (float)800.f / (float)600.f, RV::zNear, RV::zFar);
 
 	RV::_modelView = glm::mat4(1.f);
 	RV::_modelView = glm::translate(RV::_modelView, glm::vec3(RV::panv[0], RV::panv[1], RV::panv[2]));
@@ -811,8 +770,6 @@ void GLrender(float dt) {
 	wPos = glm::vec4(0.f, 0.f, 0.f, 1.f);
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
-
-	MoveCamera();	// dolly effect
 
 	Axis::drawAxis();
 	
@@ -829,140 +786,34 @@ void GUI() {
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		/////////////////////////////////////////////////////////
 
-		ImGui::Checkbox("Use Phong shader", &isPhongS);
-		if (isPhongS)
+		if (ImGui::TreeNode("Phong Shading"))
 		{
-			if (ImGui::TreeNode("Phong Shading"))
-			{
-				ImGui::SliderFloat3("Light Position", glm::value_ptr(phong.pos), -1.f, 1.f);
+			ImGui::SliderFloat3("Light Position", glm::value_ptr(phong.pos), -1.f, 1.f);
 
-				ImGui::ColorEdit4("Ambient Color", glm::value_ptr(phong.ambient_color));
-				ImGui::ColorEdit4("Diffuse Color", glm::value_ptr(phong.diffuse_color));
-				ImGui::ColorEdit4("Specular Color", glm::value_ptr(phong.specular_color));
+			ImGui::ColorEdit4("Ambient Color", glm::value_ptr(phong.ambient_color));
+			ImGui::ColorEdit4("Diffuse Color", glm::value_ptr(phong.diffuse_color));
+			ImGui::ColorEdit4("Specular Color", glm::value_ptr(phong.specular_color));
 
-				ImGui::SliderFloat("Ambient Strength", &phong.ambient_strength, 0.0f, 1.0f);
-				ImGui::SliderFloat("Diffuse Strength", &phong.diffuse_strength, 0.0f, 1.0f);
-				ImGui::SliderFloat("Specular Strength", &phong.specular_strength, 0.0f, 1.0f);
-				ImGui::SliderFloat("Shininess", &phong.shininess, 0, 255);
+			ImGui::SliderFloat("Ambient Strength", &phong.ambient_strength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Diffuse Strength", &phong.diffuse_strength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Specular Strength", &phong.specular_strength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Shininess", &phong.shininess, 0, 255);
 
-				ImGui::TreePop();
-			}
-		}
-		
-		//ImGui::Checkbox("Use Toon shader", &isToonS);
-		if (isToonS)
-		{
-			if (ImGui::TreeNode("Toon Shading"))
-			{
-				ImGui::SliderFloat3("Light Position", glm::value_ptr(toon.pos), -1.f, 1.f);
-
-				ImGui::ColorEdit4("Ambient Color", glm::value_ptr(toon.ambient_color));
-				ImGui::ColorEdit4("Diffuse Color", glm::value_ptr(toon.diffuse_color));
-				ImGui::ColorEdit4("Specular Color", glm::value_ptr(toon.specular_color));
-
-				ImGui::SliderFloat("Ambient Strength", &toon.ambient_strength, 0.0f, 1.0f);
-				ImGui::SliderFloat("Diffuse Strength", &toon.diffuse_strength, 0.0f, 1.0f);
-				ImGui::SliderFloat("Specular Strength", &toon.specular_strength, 0.0f, 1.0f);
-				ImGui::SliderFloat("Shininess", &toon.shininess, 0, 255);
-
-				ImGui::TreePop();
-			}
+			ImGui::TreePop();
 		}
 		
 		#pragma region OLD
 		
-		/*
-		if (ImGui::TreeNode("Scenario"))
-		{
-			if (ImGui::TreeNode("Ground"))
-			{
-				ImGui::DragFloat3("Translate", glm::value_ptr(scenario->obj.pos), 0.f, 1.f);
-				ImGui::ColorEdit4("Object Color", glm::value_ptr(scenario->obj.color));
-				ImGui::Checkbox("Active ambient", &scenario->obj.haveAmbient);
-				ImGui::Checkbox("Active diffuse", &scenario->obj.haveDiffuse);
-				ImGui::Checkbox("Active specular", &scenario->obj.haveSpecular);
-
-				ImGui::TreePop();
-			}
-
-			if (ImGui::TreeNode("Sword"))
-			{
-				ImGui::DragFloat3("Translate", glm::value_ptr(sword->obj.pos), 0.f, 1.f);
-				ImGui::ColorEdit4("Object Color", glm::value_ptr(sword->obj.color));
-				ImGui::Checkbox("Active ambient", &sword->obj.haveAmbient);
-				ImGui::Checkbox("Active diffuse", &sword->obj.haveDiffuse);
-				ImGui::Checkbox("Active specular", &sword->obj.haveSpecular);
-
-				ImGui::TreePop();
-			}
-
-			if (ImGui::TreeNode("Anvil"))
-			{
-				ImGui::DragFloat3("Translate", glm::value_ptr(anvil->obj.pos), 0.f, 1.f);
-				ImGui::ColorEdit4("Object Color", glm::value_ptr(anvil->obj.color));
-				ImGui::Checkbox("Active ambient", &anvil->obj.haveAmbient);
-				ImGui::Checkbox("Active diffuse", &anvil->obj.haveDiffuse);
-				ImGui::Checkbox("Active specular", &anvil->obj.haveSpecular);
-
-				ImGui::TreePop();
-			}
-			if (ImGui::TreeNode("Box"))
-			{
-				ImGui::DragFloat3("Translate", glm::value_ptr(box->obj.pos), 0.f, 1.f);
-				ImGui::ColorEdit4("Object Color", glm::value_ptr(box->obj.color));
-				ImGui::Checkbox("Active ambient", &box->obj.haveAmbient);
-				ImGui::Checkbox("Active diffuse", &box->obj.haveDiffuse);
-				ImGui::Checkbox("Active specular", &box->obj.haveSpecular);
-
-				ImGui::TreePop();
-			}
-
-			if (ImGui::TreeNode("Chest"))
-			{
-				ImGui::DragFloat3("Translate", glm::value_ptr(chest->obj.pos), 0.f, 1.f);
-				ImGui::ColorEdit4("Object Color", glm::value_ptr(chest->obj.color));
-				ImGui::Checkbox("Active ambient", &chest->obj.haveAmbient);
-				ImGui::Checkbox("Active diffuse", &chest->obj.haveDiffuse);
-				ImGui::Checkbox("Active specular", &chest->obj.haveSpecular);
-
-				ImGui::TreePop();
-			}
-
-			ImGui::TreePop();
-		}
-
-		if (ImGui::TreeNode("Billboard"))
-		{
-			ImGui::DragFloat3("Translate", glm::value_ptr(billboard->obj.pos), 0.f, 1.f);
-			ImGui::ColorEdit4("Object Color", glm::value_ptr(billboard->obj.color));
-			ImGui::Checkbox("Active ambient", &billboard->obj.haveAmbient);
-			ImGui::Checkbox("Active diffuse", &billboard->obj.haveDiffuse);
-			ImGui::Checkbox("Active specular", &billboard->obj.haveSpecular);
-
-			ImGui::TreePop();
-		}
-
-		ImGui::Checkbox("Dolly Effect", &moveCamera);
-		if (moveCamera)
-		{
-			ImGui::SliderFloat("Width", &width, 5, 30);
-			ImGui::SliderFloat("PosZ", &RV::panv[2], -20, -6);
-		}
-		
-
-
-		*/
-
 #pragma endregion
 
-		if (ImGui::TreeNode("Cube"))
+		if (ImGui::TreeNode("Car"))
 		{
-			ImGui::DragFloat3("Translate", glm::value_ptr(simpleCube->obj.pos), 0.f, 1.f);
-			ImGui::ColorEdit4("Object Color", glm::value_ptr(simpleCube->obj.color));
-			ImGui::Checkbox("Active ambient", &simpleCube->obj.haveAmbient);
-			ImGui::Checkbox("Active diffuse", &simpleCube->obj.haveDiffuse);
-			ImGui::Checkbox("Active specular", &simpleCube->obj.haveSpecular);
-
+			ImGui::DragFloat3("Translate", glm::value_ptr(car->obj.pos), 0.f, 1.f);
+			ImGui::ColorEdit4("Object Color", glm::value_ptr(car->obj.color));
+			ImGui::Checkbox("Active ambient", &car->obj.haveAmbient);
+			ImGui::Checkbox("Active diffuse", &car->obj.haveDiffuse);
+			ImGui::Checkbox("Active specular", &car->obj.haveSpecular);
+			
 			ImGui::TreePop();
 		}
 

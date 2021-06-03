@@ -5,6 +5,8 @@
 #include <iostream>
 #include <vector>
 
+#include "stb_image.h"
+
 class Texture
 {
 public:

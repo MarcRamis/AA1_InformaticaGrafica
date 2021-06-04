@@ -24,7 +24,7 @@ struct ObjectParameters
 	glm::vec3 pos;
 	glm::vec4 color;
 	bool haveAmbient, haveDiffuse, haveSpecular;
-
+	
 	ObjectParameters(glm::vec3 _pos, glm::vec4 _color, bool _ambient, bool _diffuse, bool _specular)
 		: pos(_pos), color(_color), haveAmbient(_ambient), haveDiffuse(_diffuse), haveSpecular(_specular){}
 };
@@ -51,7 +51,8 @@ public:
 	~Model();
 	
 	void UpdateTransform(glm::vec3 transform, glm::vec3 scale, glm::vec3 rotation);
-
+	
 	void DrawTriangles();
+	void DrawTrianglesInstanced(unsigned int instancesToDraw);
 	void DrawPoints();
 };

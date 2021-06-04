@@ -53,7 +53,10 @@ Light phong = Light(glm::vec4(0.f,0.f,1.f, 1.f),
 	glm::vec4(1.f,1.f,1.f,1.f), glm::vec4(1.f, 1.f, 1.f,1.f), glm::vec4(1.f, 0.f, 0.f,1.f),
 	0.5f,0.5f,0.5f,1.f);
 
-bool test;
+// CAR INSTANCING --> 10
+glm::mat4 objMatCar[10];
+glm::vec3 objPosCar[10];
+glm::vec3 randomPosition[10];
 
 #pragma endregion
 
@@ -594,42 +597,95 @@ namespace StencilBuffer{
 
 #pragma region AA3
 
+bool DifferenceBetweenTwoPoints(glm::vec3 pos1, glm::vec3 pos2, float diff)
+{
+	float xDifference = pos1.x - pos2.x;
+	float yDifference = pos1.y - pos2.y;
+	float zDifference = pos1.z - pos2.z;
+	float distance = glm::sqrt(glm::pow(xDifference, 2) - glm::pow(yDifference,2) - glm::pow(zDifference, 2));
+
+	if (distance < diff)
+	{
+		return true;
+	}
+}
+
+glm::vec3 GetRandomPositionXZ(float min, float max)
+{
+	return glm::vec3(glm::linearRand(min, max), 0.f, glm::linearRand(min, max));
+}
+void UpdatePosition(glm::vec3& pos, glm::vec3& newPos)
+{
+	pos += 0.01f * newPos;
+}
+
+void MoveCar()
+{
+	glm::mat4 t, s;
+
+	for (int i = 0; i < 10; i++)
+	{
+		UpdatePosition(objPosCar[i], randomPosition[i]);
+		if (DifferenceBetweenTwoPoints(objPosCar[i], randomPosition[i], 1.f))
+		{
+			randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);
+		}
+		t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
+		s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+		objMatCar[i] = t * s;
+	}
+}
+
 void InitModels()
 {
+	srand(time(nullptr));
+	
 	// Init CubeMap
-	std::vector<std::string> faces
-	{
-			"res/skybox/right.jpg",
-			"res/skybox/left.jpg",
-			"res/skybox/top.jpg",
-			"res/skybox/bottom.jpg",
-			"res/skybox/front.jpg",
-			"res/skybox/back.jpg"
-	};
-	skyBox = new CubeMap(faces);
+	//std::vector<std::string> faces
+	//{
+	//		"res/skybox/right.jpg",
+	//		"res/skybox/left.jpg",
+	//		"res/skybox/top.jpg",
+	//		"res/skybox/bottom.jpg",
+	//		"res/skybox/front.jpg",
+	//		"res/skybox/back.jpg"
+	//};
+	//skyBox = new CubeMap(faces);
+	//
+	//skyBoxCube = new Model(Shader("res/files/vert_cubemap.vs", "res/files/frag_cubemap.fs", nullptr), "res/cube.obj",
+	//	ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
+	//	Texture(nullptr, Texture::ETextureType::NONE));
 	
-	skyBoxCube = new Model(Shader("res/files/vert_cubemap.vs", "res/files/frag_cubemap.fs", nullptr), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
-		Texture(nullptr, Texture::ETextureType::NONE));
-
 	// Init Models
-	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/iron.jpg", Texture::ETextureType::JPG));
+	//simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+	//	ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+	//	Texture("res/iron.jpg", Texture::ETextureType::JPG));
+	//
+	//simpleCubeOutline = new Model(Shader("res/files/vert.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/cube.obj",
+	//	ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
+	//	Texture("res/iron.jpg", Texture::ETextureType::JPG));
+	//
+	//floorCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+	//	ObjectParameters(glm::vec3(0.f, -2.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+	//	Texture("res/iron2.jpg", Texture::ETextureType::JPG));
 	
-	simpleCubeOutline = new Model(Shader("res/files/vert.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/iron.jpg", Texture::ETextureType::JPG));
-
-	floorCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, -2.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/iron2.jpg", Texture::ETextureType::JPG));
-	
+	// CAR INICIALIZATION
 	stbi_set_flip_vertically_on_load(true);
-	car = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/Camaro.obj",
-		ObjectParameters(glm::vec3(-5.f, -2.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+	car = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/Camaro.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
 		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
 	stbi_set_flip_vertically_on_load(false);
+
+	glm::mat4 t, s;
+	for (int i = 0; i < 10; i++)
+	{
+		randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);;
+		objPosCar[i] = glm::vec3(glm::linearRand(-10.f, 10.f), 0.f, glm::linearRand(-10.f, 10.f));
+		t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
+		s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+		objMatCar[i] = t * s;
+	}
+	//SelectNewPosition();
 }
 void SetValuesSkyBox(Model *model, unsigned int id)
 {
@@ -649,7 +705,7 @@ void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 	model->shader.Use();
 	
 	model->objMat = _t * _s;
-
+	
 	model->shader.SetMatrix("objMat", 1, GL_FALSE, glm::value_ptr(model->objMat));
 	model->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
 	model->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
@@ -688,51 +744,91 @@ void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 	model->texture.Active();
 	model->shader.SetInt("ourTexture", 0);
 
-	if (test)
+	//FB::Draw(RenderVars::_MVP, RenderVars::_modelView, RenderVars::_projection);
+}
+void SetValuesInstanced(Model* model, unsigned int instancesToDraw, glm::mat4 objMat[])
+{
+	float currentTime = ImGui::GetTime();
+
+	model->shader.Use();
+
+	model->shader.SetInt("instancesToDraw", instancesToDraw);
+	
+	for (int i = 0; i < instancesToDraw; i++)
 	{
-		FB::Draw(RenderVars::_MVP, RenderVars::_modelView, RenderVars::_projection);
+		model->shader.SetMatrix("objMat[" + std::to_string(i) + "]", 1, GL_FALSE, glm::value_ptr(objMat[i]));
 	}
 
-	model->DrawTriangles();
+	model->shader.SetMatrix("mv_Mat", 1, GL_FALSE, glm::value_ptr(RenderVars::_modelView));
+	model->shader.SetMatrix("mvpMat", 1, GL_FALSE, glm::value_ptr(RenderVars::_MVP));
+
+	model->shader.SetFloat("objColor", model->obj.color.x, model->obj.color.y, model->obj.color.z, model->obj.color.w);
+
+	model->shader.SetFloat("dir_light", phong.pos.x, phong.pos.y, phong.pos.z, 1.f);
+	model->shader.SetFloat("ambient_color", phong.ambient_color.x, phong.ambient_color.y, phong.ambient_color.z, phong.ambient_color.w);
+	model->shader.SetFloat("diffuse_color", phong.diffuse_color.x, phong.diffuse_color.y, phong.diffuse_color.z, phong.diffuse_color.w);
+	model->shader.SetFloat("specular_color", phong.specular_color.x, phong.specular_color.y, phong.specular_color.z, phong.specular_color.w);
+
+	if (model->obj.haveAmbient) model->shader.SetFloat("ambient_strength", phong.ambient_strength, phong.ambient_strength, phong.ambient_strength, 1.f);
+	else model->shader.SetFloat("ambient_strength", phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, phong.ambient_strength * 0.f, 1.f);
+	if (model->obj.haveDiffuse) model->shader.SetFloat("diffuse_strength", phong.diffuse_strength, phong.diffuse_strength, phong.diffuse_strength, 1.f);
+	else model->shader.SetFloat("diffuse_strength", phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, phong.diffuse_strength * 0.f, 1.f);
+	if (model->obj.haveSpecular) model->shader.SetFloat("specular_strength", phong.specular_strength, phong.specular_strength, phong.specular_strength, 1.f);
+	else model->shader.SetFloat("specular_strength", phong.specular_strength * 0.f, phong.specular_strength * 0.f, phong.specular_strength * 0.f, 1.f);
+
+	model->shader.SetFloat("shininess", phong.shininess);
+
+	model->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
+
+	model->shader.SetFloat("time", currentTime);
+	model->shader.SetFloat("random", random.x, random.y, random.z);
+
+	model->texture.Active();
+	model->shader.SetInt("ourTexture", 0);
 }
+
 void RenderModels()
 {
 	glm::mat4 t, s;
 
-	glDepthMask(GL_FALSE);
-	t = glm::translate(glm::mat4(), glm::vec3(skyBoxCube->obj.pos));
-	s = glm::scale(glm::mat4(), glm::vec3(10.f, 10.0f, 10.f));
-	skyBoxCube->objMat = t * s;
-	SetValuesSkyBox(skyBoxCube, skyBox->textureID);
-	glDepthMask(GL_TRUE);
+	//glDepthMask(GL_FALSE);
+	//t = glm::translate(glm::mat4(), glm::vec3(skyBoxCube->obj.pos));
+	//s = glm::scale(glm::mat4(), glm::vec3(10.f, 10.0f, 10.f));
+	//skyBoxCube->objMat = t * s;
+	//SetValuesSkyBox(skyBoxCube, skyBox->textureID);
+	//glDepthMask(GL_TRUE);
 	
-	StencilBuffer::EnableStencil();
-	StencilBuffer::Off();		// Here we draw all that doesn't contain an outline
-	
-	t = glm::translate(glm::mat4(), glm::vec3(floorCube->obj.pos));
-	s = glm::scale(glm::mat4(), glm::vec3(10.f, 1.0f, 10.f));
-	SetValues(floorCube, t, s);
+	MoveCar();
+	SetValuesInstanced(car, 10, objMatCar);
+	car->DrawTrianglesInstanced(10);
 
-	t = glm::translate(glm::mat4(), glm::vec3(car->obj.pos));
-	s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
-	SetValues(car, t, s);
-	
-	StencilBuffer::On();	// Here we draw all that contain an outline
-	
-	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
-	s = glm::scale(glm::mat4(), glm::vec3(1.0f, 1.0f, 1.0f));
-	SetValues(simpleCube, t, s);
-	
-	StencilBuffer::Off();
-	StencilBuffer::DisableDepth();	// Here we draw the outline of the same object.
-									// It must be bigger than the object
-
-	t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
-	s = glm::scale(glm::mat4(), glm::vec3(1.0f * 1.2f, 1.0f * 1.2f, 1.0f * 1.2f));
-	SetValues(simpleCubeOutline, t, s);
-	
-	StencilBuffer::On();	// Set on because if not, it will draw the object in the screen
-	StencilBuffer::EnableDepth();
+	//StencilBuffer::EnableStencil();
+	//StencilBuffer::Off();		// Here we draw all that doesn't contain an outline
+	//
+	//t = glm::translate(glm::mat4(), glm::vec3(floorCube->obj.pos));
+	//s = glm::scale(glm::mat4(), glm::vec3(10.f, 1.0f, 10.f));
+	//SetValues(floorCube, t, s);
+	//
+	//t = glm::translate(glm::mat4(), glm::vec3(car->obj.pos));
+	//s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+	//SetValues(car, t, s);
+	//
+	//StencilBuffer::On();	// Here we draw all that contain an outline
+	//
+	//t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
+	//s = glm::scale(glm::mat4(), glm::vec3(1.0f, 1.0f, 1.0f));
+	//SetValues(simpleCube, t, s);
+	//
+	//StencilBuffer::Off();
+	//StencilBuffer::DisableDepth();	// Here we draw the outline of the same object.
+	//								// It must be bigger than the object
+	//
+	//t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
+	//s = glm::scale(glm::mat4(), glm::vec3(1.0f * 1.2f, 1.0f * 1.2f, 1.0f * 1.2f));
+	//SetValues(simpleCubeOutline, t, s);
+	//
+	//StencilBuffer::On();	// Set on because if not, it will draw the object in the screen
+	//StencilBuffer::EnableDepth();
 }
 
 #pragma endregion
@@ -805,26 +901,17 @@ void GUI() {
 		#pragma region OLD
 		
 #pragma endregion
-
-		if (ImGui::TreeNode("Car"))
-		{
-			ImGui::DragFloat3("Translate", glm::value_ptr(car->obj.pos), 0.f, 1.f);
-			ImGui::ColorEdit4("Object Color", glm::value_ptr(car->obj.color));
-			ImGui::Checkbox("Active ambient", &car->obj.haveAmbient);
-			ImGui::Checkbox("Active diffuse", &car->obj.haveDiffuse);
-			ImGui::Checkbox("Active specular", &car->obj.haveSpecular);
-			
-			ImGui::TreePop();
-		}
-
-		ImGui::Checkbox("Discard Effect", &isMatrix);
-		if (isMatrix)
-		{
-			ImGui::DragFloat("Displace in X", &displaceX, 0.1f, 0.0f, 50.f);
-			ImGui::DragFloat("Displace in Y", &displaceY, 0.1f, 0.0f, 50.f);
-		}
-
-		ImGui::Checkbox("Frame Buffer", &test);
+		//
+		//if (ImGui::TreeNode("Car"))
+		//{
+		//	ImGui::DragFloat3("Translate", glm::value_ptr(car->obj.pos), 0.f, 1.f);
+		//	ImGui::ColorEdit4("Object Color", glm::value_ptr(car->obj.color));
+		//	ImGui::Checkbox("Active ambient", &car->obj.haveAmbient);
+		//	ImGui::Checkbox("Active diffuse", &car->obj.haveDiffuse);
+		//	ImGui::Checkbox("Active specular", &car->obj.haveSpecular);
+		//	
+		//	ImGui::TreePop();
+		//}
 		/////////////////////////////////////////////////////////
 	}
 

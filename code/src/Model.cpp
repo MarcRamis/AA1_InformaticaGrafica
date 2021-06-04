@@ -70,6 +70,19 @@ void Model::DrawTriangles()
 	glUseProgram(0);
 	glDisable(GL_BLEND);
 }
+
+void Model::DrawTrianglesInstanced(unsigned int instancesToDraw)
+{
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBindVertexArray(vao);
+	glDrawArraysInstanced(GL_TRIANGLES, 0, vertices.size(), instancesToDraw);
+
+	glBindVertexArray(0);
+	glUseProgram(0);
+	glDisable(GL_BLEND);
+}
+
 void Model::DrawPoints()
 {
 	glEnable(GL_BLEND);

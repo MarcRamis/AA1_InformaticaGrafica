@@ -50,9 +50,8 @@ public:
 
 	~Model();
 	
-	void UpdateTransform(glm::vec3 transform, glm::vec3 scale, glm::vec3 rotation);
-	
 	void DrawTriangles();
 	void DrawTrianglesInstanced(unsigned int instancesToDraw);
 	void DrawPoints();
+	void DrawPointsInstanced(unsigned int instancesToDraw);
 };

@@ -38,15 +38,70 @@ Texture::Texture(const char* path, ETextureType type) : m_Path(path)
 		// IMAGE PARAMETERS
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		
+		glBindTexture(GL_TEXTURE_2D, 0);
+
 		// CLEAN
 		stbi_image_free(data);
 	}
 	else {
 		std::cout << "No texture" << std::endl;
+	}
+}
+
+Texture::Texture(unsigned int* _id, const char* path, ETextureType type) : m_Path(path)
+{
+	if (_id != nullptr)
+	{
+		id = *_id;
+	}
+
+	if (path != nullptr)
+	{
+		// LOAD TEXTURE
+		data = stbi_load(path, &width, &height, &nrChannels, 0);
+
+		// CREATE TEXTURE
+		glGenTextures(1, &id);
+		glBindTexture(GL_TEXTURE_2D, id);
+
+		switch (type)
+		{
+		case ETextureType::NONE:
+
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+			break;
+
+		case ETextureType::JPG:
+			if (data) {
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+				glGenerateMipmap(GL_TEXTURE_2D);
+			}
+			break;
+		case ETextureType::PNG:
+			if (data) {
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+				glGenerateMipmap(GL_TEXTURE_2D);
+			}
+			break;
+		}
+
+		// IMAGE PARAMETERS
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		// CLEAN
+		stbi_image_free(data);
 	}
 }
 
@@ -77,12 +132,10 @@ CubeMap::CubeMap(std::vector<std::string> faces)
 			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
 				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
 			);
-			stbi_image_free(data);
 		}
 		else
 		{
 			std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
-			stbi_image_free(data);
 		}
 	}
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -90,4 +143,7 @@ CubeMap::CubeMap(std::vector<std::string> faces)
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	stbi_image_free(data);
 }

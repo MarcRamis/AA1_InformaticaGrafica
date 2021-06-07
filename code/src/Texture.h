@@ -22,6 +22,7 @@ public:
 	Texture();
 	~Texture();
 	Texture(const char* path, ETextureType type);
+	Texture(unsigned int* _id, const char* path, ETextureType type);
 
 	void Clean();
 	void Active();

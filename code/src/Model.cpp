@@ -22,7 +22,6 @@ Model::Model(Shader _shader, const char* path, ObjectParameters objParameters, T
 	// INITIALIZE MODEL
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
-	
 	glGenBuffers(3, vbo);
 	
 	// Vertices
@@ -44,8 +43,6 @@ Model::Model(Shader _shader, const char* path, ObjectParameters objParameters, T
 	glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 Model::~Model()
@@ -94,11 +91,14 @@ void Model::DrawPoints()
 	glDisable(GL_BLEND);
 }
 
-void Model::UpdateTransform(glm::vec3 translation, glm::vec3 scale, glm::vec3 rotation)
+void Model::DrawPointsInstanced(unsigned int instancesToDraw)
 {
-	glm::mat4 t = glm::translate(glm::mat4(), glm::vec3(translation));
-	glm::mat4 s = glm::scale(glm::mat4(), glm::vec3(scale));
-	//glm::mat4 r = glm::rotate(glm::mat4(), 3.14f / 2, glm::vec3(rotation));
-	
-	objMat = t * s;
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBindVertexArray(vao);
+	glDrawArraysInstanced(GL_POINTS, 0, vertices.size(), instancesToDraw);
+
+	glBindVertexArray(0);
+	glUseProgram(0);
+	glDisable(GL_BLEND);
 }

@@ -40,12 +40,13 @@ float displaceX = 5.0f;
 float displaceY = 5.0f;
 
 // MODELS
-Model *simpleCube;
-Model *simpleCubeOutline;
 Model *floorCube;
 Model *skyBoxCube;
 Model *car;
 Model *carStencil;
+
+Model *frameBuffer;;
+Model *tree;
 
 CubeMap *skyBox;
 
@@ -58,6 +59,9 @@ Light phong = Light(glm::vec4(0.f,0.f,1.f, 1.f),
 glm::mat4 objMatCar[10];
 glm::vec3 objPosCar[10];
 glm::vec3 randomPosition[10];
+
+// TREE INSTANCING --> 100
+glm::mat4 objMatTree[100];
 
 #pragma endregion
 
@@ -517,21 +521,28 @@ namespace Cube {
 
 namespace FB {
 
-	unsigned int fbo;
-	Texture fbo_Tex;
+	unsigned int id_frameBuffer;
+	unsigned int id_texture;
 	
 	void Init()
 	{
 		// INIT FBO TEXTURE
-		glGenFramebuffers(1, &fbo);
+		glGenFramebuffers(1, &id_frameBuffer);
+		glBindFramebuffer(GL_FRAMEBUFFER, id_frameBuffer);
+
 		// CREATE TEXTURE AS WE CREATE IT IN TEXTURE
-		fbo_Tex = Texture("res/white.jpg", Texture::ETextureType::NONE);
-		// BIND TEXTURE
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_Tex.id, 0);
+		glGenTextures(1, &id_texture);
+		glBindTexture(GL_TEXTURE_2D, id_texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_2D, 0);
 		
+		// BIND TEXTURE
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, id_texture, 0);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
+
 	void Draw(glm::mat4 _MVP, glm::mat4 _ModelView, glm::mat4 _projection)
 	{
 		//we store the current values in a temporary variable
@@ -539,11 +550,10 @@ namespace FB {
 		glm::mat4 t_mv = _ModelView;
 
 		// we set up our framebuffer and draw into it
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		//glClearColor(1.f, 1.f, 1.f, 1.f);
+		glBindFramebuffer(GL_FRAMEBUFFER, id_frameBuffer);
+		glClearColor(1.f, 1.f, 1.f, 1.f);
 		glViewport(0, 0, 800, 800);
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		//glEnable(GL_DEPTH_TEST);
 		_MVP = _projection;
 		_ModelView = glm::mat4(1.f);
@@ -553,10 +563,10 @@ namespace FB {
 		_ModelView = t_mv;
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+		
 		//we set up a texture where to draw our FBO:
-		glViewport(0, 0, fbo_Tex.width, fbo_Tex.height);
-		glBindTexture(GL_TEXTURE_2D, fbo_Tex.id);
+		glViewport(0, 0, 800, 800);
+		glBindTexture(GL_TEXTURE_2D, id_texture);
 	}	
 }
 
@@ -596,7 +606,7 @@ namespace StencilBuffer{
 
 #pragma endregion
 
-#pragma region AA3
+#pragma region Functions Utils
 
 bool DifferenceBetweenTwoPoints(glm::vec3 pos1, glm::vec3 pos2, float diff)
 {
@@ -618,7 +628,6 @@ void UpdatePosition(glm::vec3& pos, glm::vec3& newPos)
 {
 	pos += 0.01f * newPos;
 }
-
 void MoveCar()
 {
 	glm::mat4 t, s;
@@ -639,60 +648,6 @@ void MoveCar()
 	}
 }
 
-void InitModels()
-{
-	srand(time(nullptr));
-	
-	// Init CubeMap
-	std::vector<std::string> faces
-	{
-			"res/skybox/right.jpg",
-			"res/skybox/left.jpg",
-			"res/skybox/top.jpg",
-			"res/skybox/bottom.jpg",
-			"res/skybox/front.jpg",
-			"res/skybox/back.jpg"
-	};
-	skyBox = new CubeMap(faces);
-	
-	skyBoxCube = new Model(Shader("res/files/vert_cubemap.vs", "res/files/frag_cubemap.fs", nullptr), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
-		Texture(nullptr, Texture::ETextureType::NONE));
-	
-	// Init Models
-	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/iron.jpg", Texture::ETextureType::JPG));
-	
-	simpleCubeOutline = new Model(Shader("res/files/vert.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/iron.jpg", Texture::ETextureType::JPG));
-	
-	floorCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/iron2.jpg", Texture::ETextureType::JPG));
-	
-	// CAR INICIALIZATION
-	stbi_set_flip_vertically_on_load(true);
-	car = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_car_nowindow.fs", "res/files/geo.gs"), "res/Camaro.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
-	stbi_set_flip_vertically_on_load(false);
-
-	glm::mat4 t, s;
-	for (int i = 0; i < 10; i++)
-	{
-		randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);;
-		objPosCar[i] = glm::vec3(glm::linearRand(-10.f, 10.f), 0.f, glm::linearRand(-10.f, 10.f));
-		t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
-		s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
-		objMatCar[i] = t * s;
-	}
-	carStencil = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/Camaro.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 0.5f), true, true, false),
-		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
-
-}
 void SetValuesSkyBox(Model *model, unsigned int id)
 {
 	model->shader.Use();
@@ -749,8 +704,6 @@ void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 	}
 	model->texture.Active();
 	model->shader.SetInt("ourTexture", 0);
-
-	//FB::Draw(RenderVars::_MVP, RenderVars::_modelView, RenderVars::_projection);
 }
 void SetValuesInstanced(Model* model, unsigned int instancesToDraw, glm::mat4 objMat[])
 {
@@ -791,10 +744,75 @@ void SetValuesInstanced(Model* model, unsigned int instancesToDraw, glm::mat4 ob
 	model->shader.SetInt("ourTexture", 0);
 }
 
+void InitModels()
+{
+	srand(time(nullptr));
+	glm::mat4 t, s;
+
+	// Init Framebuffer
+	FB::Init();
+
+	frameBuffer = new Model(Shader("res/files/vert.vs", "res/files/frag_billboard.fs", "res/files/geo_billboard.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 10.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
+		Texture(&FB::id_texture, nullptr, Texture::ETextureType::NONE));
+
+	// Init SkyBox
+	std::vector<std::string> faces
+	{
+			"res/skybox/right.jpg",
+			"res/skybox/left.jpg",
+			"res/skybox/top.jpg",
+			"res/skybox/bottom.jpg",
+			"res/skybox/front.jpg",
+			"res/skybox/back.jpg"
+	};
+	skyBox = new CubeMap(faces);
+
+	skyBoxCube = new Model(Shader("res/files/vert_cubemap.vs", "res/files/frag_cubemap.fs", nullptr), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
+		Texture(nullptr, Texture::ETextureType::NONE));
+
+	// Init Floor
+	floorCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/ground.jpg", Texture::ETextureType::JPG));
+
+	// Init 
+	tree = new Model(Shader("res/files/vert_instancing_trees.vs", "res/files/frag_billboard.fs", "res/files/geo_billboard.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 3.5f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/tree.png", Texture::ETextureType::PNG));
+
+	for (int i = 0; i < 100; i++)
+	{
+		glm::vec3 randomPos = GetRandomPositionXZ(-150.f, 150.f);
+		t = glm::translate(glm::mat4(), glm::vec3(tree->obj.pos + randomPos));
+		s = glm::scale(glm::mat4(), glm::vec3(1.f, 1.f, 1.f));
+		objMatTree[i] = t * s;
+	}
+
+	// Init Car
+	stbi_set_flip_vertically_on_load(true);
+	car = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_car_nowindow.fs", "res/files/geo.gs"), "res/Camaro.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+	stbi_set_flip_vertically_on_load(false);
+
+	for (int i = 0; i < 10; i++)
+	{
+		randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);
+		objPosCar[i] = glm::vec3(glm::linearRand(-10.f, 10.f), 0.f, glm::linearRand(-10.f, 10.f));
+		t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
+		s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+		objMatCar[i] = t * s;
+	}
+	carStencil = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/Camaro.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 0.3f), true, true, false),
+		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+}
 void RenderModels()
 {
 	glm::mat4 t, s;
-	
+
 	glDepthMask(GL_FALSE);
 	t = glm::translate(glm::mat4(), glm::vec3(skyBoxCube->obj.pos));
 	s = glm::scale(glm::mat4(), glm::vec3(50.f, 50.f, 50.f));
@@ -821,7 +839,7 @@ void RenderModels()
 	MoveCar();
 	SetValuesInstanced(car, 10, objMatCar);
 	car->DrawTrianglesInstanced(10);
-
+	
 	StencilBuffer::Off();
 	StencilBuffer::DisableDepth();	// Here we draw the outline of the same object.
 									// It must be bigger than the object
@@ -831,6 +849,22 @@ void RenderModels()
 	
 	StencilBuffer::On();	// Set on because if not, it will draw the object in the screen
 	StencilBuffer::EnableDepth();
+
+	SetValuesInstanced(tree, 100, objMatTree);
+	tree->DrawPointsInstanced(100);
+
+	t = glm::translate(glm::mat4(), glm::vec3(frameBuffer->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(1.f, 1.f, 1.f));
+	SetValues(frameBuffer, t, s);
+	frameBuffer->DrawPoints();
+	//FB::Draw(RenderVars::_MVP,RenderVars::_modelView,RenderVars::_projection);
+	glBindFramebuffer(GL_FRAMEBUFFER, FB::id_frameBuffer);
+	glClearColor(1.f, 1.f, 1.f, 1.f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	
+	// aqui se pinta todo lo que queramos que se vea en el framebuffer
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 #pragma endregion

@@ -45,4 +45,9 @@
 		// --- Texture
 		vec4 textureColor = texture(ourTexture,texCoord);
 		out_Color = textureColor * objColor * (ambientComp + diffuseComp + specularComp); 
+
+		if (textureColor.a  < 1.0)
+		{
+			discard;
+		}
 	};

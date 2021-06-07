@@ -64,7 +64,6 @@ void Model::DrawTriangles()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glBindVertexArray(vao);
 	glDrawArrays(GL_TRIANGLES, 0, vertices.size());
-	//glDrawArraysInstanced(GL_TRIANGLES, 0, vertices.size(),1);
 	
 	glBindVertexArray(0);
 	glUseProgram(0);

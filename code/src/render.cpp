@@ -45,6 +45,7 @@ Model *simpleCubeOutline;
 Model *floorCube;
 Model *skyBoxCube;
 Model *car;
+Model *carStencil;
 
 CubeMap *skyBox;
 
@@ -105,8 +106,8 @@ namespace Axis {
 ////////////////
 namespace RenderVars {
 	const float FOV = glm::radians(65.f);
-	const float zNear = 1.f;
-	const float zFar = 50.f;
+	const float zNear = 0.01f;
+	const float zFar = 100.f;
 
 	glm::mat4 _projection;
 	glm::mat4 _modelView;
@@ -609,7 +610,6 @@ bool DifferenceBetweenTwoPoints(glm::vec3 pos1, glm::vec3 pos2, float diff)
 		return true;
 	}
 }
-
 glm::vec3 GetRandomPositionXZ(float min, float max)
 {
 	return glm::vec3(glm::linearRand(min, max), 0.f, glm::linearRand(min, max));
@@ -626,12 +626,15 @@ void MoveCar()
 	for (int i = 0; i < 10; i++)
 	{
 		UpdatePosition(objPosCar[i], randomPosition[i]);
-		if (DifferenceBetweenTwoPoints(objPosCar[i], randomPosition[i], 1.f))
+
+		if (DifferenceBetweenTwoPoints(objPosCar[i], randomPosition[i], 0.1f))
 		{
 			randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);
 		}
+
 		t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
 		s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+
 		objMatCar[i] = t * s;
 	}
 }
@@ -641,37 +644,37 @@ void InitModels()
 	srand(time(nullptr));
 	
 	// Init CubeMap
-	//std::vector<std::string> faces
-	//{
-	//		"res/skybox/right.jpg",
-	//		"res/skybox/left.jpg",
-	//		"res/skybox/top.jpg",
-	//		"res/skybox/bottom.jpg",
-	//		"res/skybox/front.jpg",
-	//		"res/skybox/back.jpg"
-	//};
-	//skyBox = new CubeMap(faces);
-	//
-	//skyBoxCube = new Model(Shader("res/files/vert_cubemap.vs", "res/files/frag_cubemap.fs", nullptr), "res/cube.obj",
-	//	ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
-	//	Texture(nullptr, Texture::ETextureType::NONE));
+	std::vector<std::string> faces
+	{
+			"res/skybox/right.jpg",
+			"res/skybox/left.jpg",
+			"res/skybox/top.jpg",
+			"res/skybox/bottom.jpg",
+			"res/skybox/front.jpg",
+			"res/skybox/back.jpg"
+	};
+	skyBox = new CubeMap(faces);
+	
+	skyBoxCube = new Model(Shader("res/files/vert_cubemap.vs", "res/files/frag_cubemap.fs", nullptr), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
+		Texture(nullptr, Texture::ETextureType::NONE));
 	
 	// Init Models
-	//simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-	//	ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-	//	Texture("res/iron.jpg", Texture::ETextureType::JPG));
-	//
-	//simpleCubeOutline = new Model(Shader("res/files/vert.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/cube.obj",
-	//	ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
-	//	Texture("res/iron.jpg", Texture::ETextureType::JPG));
-	//
-	//floorCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-	//	ObjectParameters(glm::vec3(0.f, -2.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-	//	Texture("res/iron2.jpg", Texture::ETextureType::JPG));
+	simpleCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/iron.jpg", Texture::ETextureType::JPG));
+	
+	simpleCubeOutline = new Model(Shader("res/files/vert.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(0.4f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/iron.jpg", Texture::ETextureType::JPG));
+	
+	floorCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/iron2.jpg", Texture::ETextureType::JPG));
 	
 	// CAR INICIALIZATION
 	stbi_set_flip_vertically_on_load(true);
-	car = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/Camaro.obj",
+	car = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_car_nowindow.fs", "res/files/geo.gs"), "res/Camaro.obj",
 		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
 		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
 	stbi_set_flip_vertically_on_load(false);
@@ -685,7 +688,10 @@ void InitModels()
 		s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
 		objMatCar[i] = t * s;
 	}
-	//SelectNewPosition();
+	carStencil = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/Camaro.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 0.5f), true, true, false),
+		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+
 }
 void SetValuesSkyBox(Model *model, unsigned int id)
 {
@@ -751,8 +757,6 @@ void SetValuesInstanced(Model* model, unsigned int instancesToDraw, glm::mat4 ob
 	float currentTime = ImGui::GetTime();
 
 	model->shader.Use();
-
-	model->shader.SetInt("instancesToDraw", instancesToDraw);
 	
 	for (int i = 0; i < instancesToDraw; i++)
 	{
@@ -790,45 +794,43 @@ void SetValuesInstanced(Model* model, unsigned int instancesToDraw, glm::mat4 ob
 void RenderModels()
 {
 	glm::mat4 t, s;
+	
+	glDepthMask(GL_FALSE);
+	t = glm::translate(glm::mat4(), glm::vec3(skyBoxCube->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(50.f, 50.f, 50.f));
+	skyBoxCube->objMat = t * s;
+	SetValuesSkyBox(skyBoxCube, skyBox->textureID);
+	glDepthMask(GL_TRUE);
+	
+	// NO INSTANCING
+	//t = glm::translate(glm::mat4(), glm::vec3(car->obj.pos));
+	//s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+	//SetValues(car,t,s);
+	//car->DrawTriangles();
 
-	//glDepthMask(GL_FALSE);
-	//t = glm::translate(glm::mat4(), glm::vec3(skyBoxCube->obj.pos));
-	//s = glm::scale(glm::mat4(), glm::vec3(10.f, 10.0f, 10.f));
-	//skyBoxCube->objMat = t * s;
-	//SetValuesSkyBox(skyBoxCube, skyBox->textureID);
-	//glDepthMask(GL_TRUE);
+	StencilBuffer::EnableStencil();
+	StencilBuffer::Off();		// Here we draw all that doesn't contain an outline
+	
+	t = glm::translate(glm::mat4(), glm::vec3(floorCube->obj.pos));
+	s = glm::scale(glm::mat4(), glm::vec3(100.f, 1.0f, 100.f));
+	SetValues(floorCube, t, s);
+	floorCube->DrawTriangles();
+	
+	StencilBuffer::On();	// Here we draw all that will contain an outline
 	
 	MoveCar();
 	SetValuesInstanced(car, 10, objMatCar);
 	car->DrawTrianglesInstanced(10);
 
-	//StencilBuffer::EnableStencil();
-	//StencilBuffer::Off();		// Here we draw all that doesn't contain an outline
-	//
-	//t = glm::translate(glm::mat4(), glm::vec3(floorCube->obj.pos));
-	//s = glm::scale(glm::mat4(), glm::vec3(10.f, 1.0f, 10.f));
-	//SetValues(floorCube, t, s);
-	//
-	//t = glm::translate(glm::mat4(), glm::vec3(car->obj.pos));
-	//s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
-	//SetValues(car, t, s);
-	//
-	//StencilBuffer::On();	// Here we draw all that contain an outline
-	//
-	//t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
-	//s = glm::scale(glm::mat4(), glm::vec3(1.0f, 1.0f, 1.0f));
-	//SetValues(simpleCube, t, s);
-	//
-	//StencilBuffer::Off();
-	//StencilBuffer::DisableDepth();	// Here we draw the outline of the same object.
-	//								// It must be bigger than the object
-	//
-	//t = glm::translate(glm::mat4(), glm::vec3(simpleCube->obj.pos));
-	//s = glm::scale(glm::mat4(), glm::vec3(1.0f * 1.2f, 1.0f * 1.2f, 1.0f * 1.2f));
-	//SetValues(simpleCubeOutline, t, s);
-	//
-	//StencilBuffer::On();	// Set on because if not, it will draw the object in the screen
-	//StencilBuffer::EnableDepth();
+	StencilBuffer::Off();
+	StencilBuffer::DisableDepth();	// Here we draw the outline of the same object.
+									// It must be bigger than the object
+
+	SetValuesInstanced(carStencil, 10, objMatCar);
+	carStencil->DrawTrianglesInstanced(10);
+	
+	StencilBuffer::On();	// Set on because if not, it will draw the object in the screen
+	StencilBuffer::EnableDepth();
 }
 
 #pragma endregion
@@ -840,7 +842,7 @@ void GLinit(int width, int height) {
 	glClearDepth(1.f);
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	//glEnable(GL_CULL_FACE);
 
 	RV::_projection = glm::perspective(RV::FOV, (float)width / (float)height, RV::zNear, RV::zFar);
 
@@ -897,6 +899,7 @@ void GUI() {
 
 			ImGui::TreePop();
 		}
+
 		
 		#pragma region OLD
 		

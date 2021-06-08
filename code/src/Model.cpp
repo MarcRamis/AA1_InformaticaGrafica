@@ -45,6 +45,34 @@ Model::Model(Shader _shader, const char* path, ObjectParameters objParameters, T
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
+Model::Model(Shader _shader,  ObjectParameters objParameters) : shader(_shader), obj(objParameters)
+{
+	// INITIALIZE MODEL
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	glGenBuffers(3, vbo);
+
+	// Vertices
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * vertices.size(), &verticesQuad[0], GL_STATIC_DRAW);
+	glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(0);
+	// Normals
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), &normalsQuad[0], GL_STATIC_DRAW);
+	glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(1);
+	// Uvs
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * uvs.size(), &uvsQuad[0], GL_STATIC_DRAW);
+	glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(2);
+
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
 Model::~Model()
 {
 	vertices.clear();

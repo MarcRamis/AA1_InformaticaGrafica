@@ -32,6 +32,7 @@ struct ObjectParameters
 class Model
 {
 public:
+	
 	unsigned int vao;
 	unsigned int vbo[3];
 	
@@ -41,12 +42,32 @@ public:
 	std::vector< glm::vec2 > uvs;
 	std::vector< glm::vec3 > normals;
 	
+	std::vector<glm::vec3> verticesQuad = {
+		glm::vec3(-1,-1,0),
+		glm::vec3(-1,1,0),
+		glm::vec3(1,1,0),
+		glm::vec3(1,-1,0)
+	};
+	std::vector<glm::vec3> uvsQuad = {
+		glm::vec3(-1,-1,0),
+		glm::vec3(-1,1,0),
+		glm::vec3(1,1,0),
+		glm::vec3(1,-1,0)
+	};
+	std::vector<glm::vec3> normalsQuad = {
+		glm::vec3(-1,-1,0),
+		glm::vec3(-1,1,0),
+		glm::vec3(1,1,0),
+		glm::vec3(1,-1,0)
+	};
+
 	Shader shader;
 	Texture texture;
 	ObjectParameters obj;
 
 	Model();
 	Model(Shader _shader, const char* path, ObjectParameters objParameters, Texture _texture);
+	Model(Shader _shader, ObjectParameters objParameters);
 
 	~Model();
 	

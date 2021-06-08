@@ -26,10 +26,7 @@
 	uniform vec4 specular_strength;
 	uniform vec4 specular_color;
 	uniform float shininess;
-	
-		// Toon Shader
-	uniform bool isToon;
-	
+
 	void main() 
 	{
 		// ----- PHONG SHADING

@@ -27,12 +27,10 @@
 // VARIABLES
 #pragma region Variables
 
+glm::mat4 t, s;
+
 glm::vec4 wPos;			// Camera pos
 float moveWTime = 0.0f; // move in world time
-
-// Random explode
-float randomX, randomY, randomZ;
-glm::vec3 random;
 
 // MODELS
 Model *floorCube;
@@ -50,6 +48,13 @@ Light phong = Light(glm::vec4(0.f,0.f,1.f, 1.f),
 	glm::vec4(1.f,1.f,1.f,1.f), glm::vec4(1.f, 1.f, 1.f,1.f), glm::vec4(1.f, 0.f, 0.f,1.f),
 	0.5f,0.5f,0.5f,1.f);
 
+// CAR NO INSTANCING
+bool isInstancing = true;
+Model* carNoInstancing[10];
+Model* carStencilNoInstancing[10];
+bool onceInstancing = false;
+bool onceNoInstancing = false;
+
 // CAR INSTANCING --> 10
 glm::mat4 objMatCar[10];
 glm::vec3 objPosCar[10];
@@ -60,7 +65,8 @@ glm::mat4 objMatTree[100];
 
 // FP
 bool isFP = false;
-bool onceFP = false;
+bool buttonFP = false;
+int car_id = 0;;
 
 #pragma endregion
 
@@ -551,6 +557,80 @@ namespace StencilBuffer{
 
 #pragma region Functions Utils
 
+void ResetToInstancing()
+{
+	if (onceInstancing)
+	{
+		for (int i = 0; i < 10; i++)
+		{
+			if (carNoInstancing[i] != nullptr)
+			{
+				carNoInstancing[i]->texture.Clean();
+				delete carNoInstancing[i];
+			}
+			if (carStencilNoInstancing[i] != nullptr)
+			{
+				carStencilNoInstancing[i]->texture.Clean();
+				delete carStencilNoInstancing[i];
+			}
+		}
+
+		stbi_set_flip_vertically_on_load(true);
+		car = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_car_nowindow.fs", "res/files/geo.gs"), "res/Camaro.obj",
+			ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+			Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+		stbi_set_flip_vertically_on_load(false);
+
+		for (int i = 0; i < 10; i++)
+		{
+			//randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);
+			//objPosCar[i] = glm::vec3(randomPosition[i]);
+			objPosCar[i] = car->obj.pos + glm::vec3(i * 5.f, 0.f, 0.f);
+			t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
+			s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+			objMatCar[i] = t * s;
+		}
+		carStencil = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/Camaro.obj",
+			ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 0.5f), true, true, false),
+			Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+
+		onceInstancing = false;
+	}
+}
+
+void ResetToNoInstancing()
+{
+	if(onceNoInstancing)
+	{
+		if (car != nullptr)
+		{
+			car->texture.Clean();
+			delete car;
+		}
+		if (carStencil != nullptr)
+		{
+			carStencil->texture.Clean();
+			delete carStencil;
+		}
+
+		for (int i = 0; i < 10; i++)
+		{
+			stbi_set_flip_vertically_on_load(true);
+			carNoInstancing[i] = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_car_nowindow.fs", "res/files/geo.gs"), "res/Camaro.obj",
+				ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+				Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+			stbi_set_flip_vertically_on_load(false);
+
+			carStencilNoInstancing[i] = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/Camaro.obj",
+				ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 0.5f), true, true, false),
+				Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+		}
+
+		onceNoInstancing = false;
+	}
+	
+}
+
 bool DifferenceBetweenTwoPoints(glm::vec3 pos1, glm::vec3 pos2, float diff)
 {
 	float xDifference = pos1.x - pos2.x;
@@ -604,8 +684,6 @@ void SetValuesSkyBox(Model *model, unsigned int id)
 }
 void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 {
-	float currentTime = ImGui::GetTime();
-
 	model->shader.Use();
 	
 	model->objMat = _t * _s;
@@ -632,16 +710,11 @@ void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 
 	model->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
 
-	model->shader.SetFloat("time", currentTime);
-	model->shader.SetFloat("random", random.x, random.y, random.z);
-
 	model->texture.Active();
 	model->shader.SetInt("ourTexture", 0);
 }
 void SetValuesInstanced(Model* model, unsigned int instancesToDraw, glm::mat4 objMat[])
 {
-	float currentTime = ImGui::GetTime();
-
 	model->shader.Use();
 	
 	for (int i = 0; i < instancesToDraw; i++)
@@ -670,17 +743,12 @@ void SetValuesInstanced(Model* model, unsigned int instancesToDraw, glm::mat4 ob
 
 	model->shader.SetFloat("viewPos", wPos.x, wPos.y, wPos.z, 1.f);
 
-	model->shader.SetFloat("time", currentTime);
-	model->shader.SetFloat("random", random.x, random.y, random.z);
-
 	model->texture.Active();
 	model->shader.SetInt("ourTexture", 0);
 }
 
 void RenderModels()
 {
-	glm::mat4 t, s;
-
 	glDepthMask(GL_FALSE);
 	t = glm::translate(glm::mat4(), glm::vec3(skyBoxCube->obj.pos));
 	s = glm::scale(glm::mat4(), glm::vec3(50.f, 50.f, 50.f));
@@ -705,36 +773,59 @@ void RenderModels()
 	SetValuesInstanced(tree, 100, objMatTree);
 	tree->DrawPointsInstanced(100);
 
-	//t = glm::translate(glm::mat4(), glm::vec3(frameBuffer->obj.pos));
-	//s = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f));
-	//SetValues(frameBuffer, t, s);
-	//frameBuffer->DrawTriangles();
-	//FB::Draw(RenderVars::_MVP,RenderVars::_modelView,RenderVars::_projection);
-	
 	StencilBuffer::On();	// Here we draw all that will contain an outline
 	
-	//MoveCar();
-	SetValuesInstanced(car, 10, objMatCar);
-	car->DrawTrianglesInstanced(10);
+	if (isInstancing)
+	{
+		ResetToInstancing();
+		//MoveCar();
+		SetValuesInstanced(car, 10, objMatCar);
+		car->DrawTrianglesInstanced(10);
+
+		onceNoInstancing = true;
+	}
+	else
+	{
+		ResetToNoInstancing();
+		for (int i = 0; i < 10; i++)
+		{
+			t = glm::translate(glm::mat4(), glm::vec3(carNoInstancing[i]->obj.pos + glm::vec3(i * 5.f, 0.f, 0.f)));
+			s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+			carNoInstancing[i]->objMat = t * s;
+			SetValues(carNoInstancing[i], t, s);
+			carNoInstancing[i]->DrawTriangles();
+		}
+		
+		onceInstancing = true;
+	}
 	
 	StencilBuffer::Off();
-	//StencilBuffer::DisableDepth();	// Here we draw the outline of the same object.
+									// Here we draw the outline of the same object.
 									// It must be bigger than the object
 
-	SetValuesInstanced(carStencil, 10, objMatCar);
-	carStencil->DrawTrianglesInstanced(10);
+	if (isInstancing)
+	{
+		ResetToInstancing();
+		SetValuesInstanced(carStencil, 10, objMatCar);
+		carStencil->DrawTrianglesInstanced(10);
+		onceNoInstancing = true;
+	}
+	else
+	{
+		ResetToNoInstancing();
+		for (int i = 0; i < 10; i++)
+		{
+			t = glm::translate(glm::mat4(), glm::vec3(carStencilNoInstancing[i]->obj.pos + glm::vec3(i * 5.f, 0.f, 0.f)));
+			s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+			carStencilNoInstancing[i]->objMat = t * s;
+			SetValues(carStencilNoInstancing[i], t, s);
+			carStencilNoInstancing[i]->DrawTriangles();
+		}
+
+		onceInstancing = true;
+	}
 	
 	StencilBuffer::On();	// Set on because if not, it will draw the object in the screen
-	//StencilBuffer::EnableDepth();
-	
-	//glBindFramebuffer(GL_FRAMEBUFFER, FB::id_frameBuffer);
-	//glClearColor(1.f, 1.f, 1.f, 1.f);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	//
-	//// aqui se pinta todo lo que queramos que se vea en el framebuffer
-	//
-	//glActiveTexture(GL_TEXTURE0);
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 #pragma endregion
@@ -798,7 +889,6 @@ void InitModels()
 	//glEnable(GL_DEPTH_TEST);
 
 	srand(time(nullptr));
-	glm::mat4 t, s;
 	
 	// Init Framebuffer
 	frameBuffer = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", nullptr), "res/plane.obj",
@@ -848,24 +938,50 @@ void InitModels()
 	}
 
 	// Init Car
-	stbi_set_flip_vertically_on_load(true);
-	car = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_car_nowindow.fs", "res/files/geo.gs"), "res/Camaro.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
-	stbi_set_flip_vertically_on_load(false);
 
-	for (int i = 0; i < 10; i++)
+	if (isInstancing)
 	{
-		//randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);
-		//objPosCar[i] = glm::vec3(randomPosition[i]);
-		objPosCar[i] = car->obj.pos + glm::vec3(i * 5.f, 0.f, 0.f);
-		t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
-		s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
-		objMatCar[i] = t * s;
+		stbi_set_flip_vertically_on_load(true);
+		car = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_car_nowindow.fs", "res/files/geo.gs"), "res/Camaro.obj",
+			ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+			Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+		stbi_set_flip_vertically_on_load(false);
+
+		for (int i = 0; i < 10; i++)
+		{
+			//randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);
+			//objPosCar[i] = glm::vec3(randomPosition[i]);
+			objPosCar[i] = car->obj.pos + glm::vec3(i * 5.f, 0.f, 0.f);
+			t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
+			s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+			objMatCar[i] = t * s;
+		}
+		carStencil = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/Camaro.obj",
+			ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 0.5f), true, true, false),
+			Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
 	}
-	carStencil = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/Camaro.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 0.5f), true, true, false),
-		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+	else
+	{
+		for (int i = 0; i < 10; i++)
+		{
+			stbi_set_flip_vertically_on_load(true);
+			carNoInstancing[i] = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_car_nowindow.fs", "res/files/geo.gs"), "res/Camaro.obj",
+				ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+				Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+			stbi_set_flip_vertically_on_load(false);
+
+			//randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);
+			//objPosCar[i] = glm::vec3(randomPosition[i]);
+			objPosCar[i] = car->obj.pos + glm::vec3(i * 5.f, 0.f, 0.f);
+			t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
+			s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+			objMatCar[i] = t * s;
+			
+			carStencilNoInstancing[i] = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/Camaro.obj",
+				ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 0.5f), true, true, false),
+				Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+		}
+	}
 }
 
 // RENDER STATE
@@ -890,6 +1006,7 @@ void GLrender(float dt) {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	/////////////////////////////////////////////////////////
 	if (!isFP)
 	{
 		RV::_modelView = glm::mat4(1.f);
@@ -916,8 +1033,6 @@ void GLrender(float dt) {
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
 	
-	//glm::mat4 t, s;
-	//
 	//t = glm::translate(glm::mat4(), glm::vec3(frameBuffer->obj.pos));
 	//s = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f));
 	//SetValues(frameBuffer, t, s);
@@ -926,7 +1041,7 @@ void GLrender(float dt) {
 	//glViewport(0, 0, 800, 600);
 
 	RenderModels();
-	
+	/////////////////////////////////////////////////////////
 
 	Axis::drawAxis();
 	ImGui::Render();
@@ -938,42 +1053,14 @@ void GUI() {
 	ImGui::Begin("Physics Parameters", &show, 0);
 	{
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		
 		/////////////////////////////////////////////////////////
-
-		//if (ImGui::TreeNode("Phong Shading"))
-		//{
-		//	ImGui::SliderFloat3("Light Position", glm::value_ptr(phong.pos), -1.f, 1.f);
-		//
-		//	ImGui::ColorEdit4("Ambient Color", glm::value_ptr(phong.ambient_color));
-		//	ImGui::ColorEdit4("Diffuse Color", glm::value_ptr(phong.diffuse_color));
-		//	ImGui::ColorEdit4("Specular Color", glm::value_ptr(phong.specular_color));
-		//
-		//	ImGui::SliderFloat("Ambient Strength", &phong.ambient_strength, 0.0f, 1.0f);
-		//	ImGui::SliderFloat("Diffuse Strength", &phong.diffuse_strength, 0.0f, 1.0f);
-		//	ImGui::SliderFloat("Specular Strength", &phong.specular_strength, 0.0f, 1.0f);
-		//	ImGui::SliderFloat("Shininess", &phong.shininess, 0, 255);
-		//
-		//	ImGui::TreePop();
-		//}
-
 		
-		#pragma region OLD
-		
-#pragma endregion
-
 		ImGui::Checkbox("First Person Camera", &isFP);
-		ImGui::DragFloat("Alpha Window",&carStencil->obj.color.a,0.1f, 0.f,1.f);
-		//
-		//if (ImGui::TreeNode("Car"))
-		//{
-		//	ImGui::DragFloat3("Translate", glm::value_ptr(car->obj.pos), 0.f, 1.f);
-		//	ImGui::ColorEdit4("Object Color", glm::value_ptr(car->obj.color));
-		//	ImGui::Checkbox("Active ambient", &car->obj.haveAmbient);
-		//	ImGui::Checkbox("Active diffuse", &car->obj.haveDiffuse);
-		//	ImGui::Checkbox("Active specular", &car->obj.haveSpecular);
-		//	
-		//	ImGui::TreePop();
-		//}
+		ImGui::Checkbox("Use Car Instancing", &isInstancing);
+		ImGui::DragFloat("Alpha Window",&carStencil->obj.color.a,0.01f, 0.f,1.f);
+
+		
 		/////////////////////////////////////////////////////////
 	}
 

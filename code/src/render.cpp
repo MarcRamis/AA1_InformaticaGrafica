@@ -756,8 +756,7 @@ void RenderModels()
 	SetValuesSkyBox(skyBoxCube, skyBox->textureID);
 	glDepthMask(GL_TRUE);
 
-	StencilBuffer::EnableStencil();
-	StencilBuffer::Off();		// Here we draw all that doesn't contain an outline
+	StencilBuffer::EnableStencil	StencilBuffer::Off();		// Here we draw all that doesn't contain stencil
 	
 	t = glm::translate(glm::mat4(), glm::vec3(floorCube->obj.pos));
 	s = glm::scale(glm::mat4(), glm::vec3(100.f, 1.0f, 100.f));
@@ -767,7 +766,7 @@ void RenderModels()
 	SetValuesInstanced(tree, 100, objMatTree);
 	tree->DrawPointsInstanced(100);
 
-	StencilBuffer::On();	// Here we draw all that will contain an outline
+	StencilBuffer::On();	// Here we draw all that will contain stencil
 	
 	if (isInstancing)
 	{
@@ -793,8 +792,7 @@ void RenderModels()
 	}
 	
 	StencilBuffer::Off();
-									// Here we draw the outline of the same object.
-									// It must be bigger than the object
+									// Here we draw the same object that we are goin to make transparent
 
 	if (isInstancing)
 	{
@@ -818,7 +816,7 @@ void RenderModels()
 		onceInstancing = true;
 	}
 	
-	StencilBuffer::On();	// Set on because if not, it will draw the object in the screen
+	StencilBuffer::On();
 }
 
 #pragma endregion

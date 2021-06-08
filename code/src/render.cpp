@@ -751,7 +751,7 @@ void RenderModels()
 {
 	glDepthMask(GL_FALSE);
 	t = glm::translate(glm::mat4(), glm::vec3(skyBoxCube->obj.pos));
-	s = glm::scale(glm::mat4(), glm::vec3(50.f, 50.f, 50.f));
+	s = glm::scale(glm::mat4(), glm::vec3(100.f, 100.f, 100.f));
 	skyBoxCube->objMat = t * s;
 	SetValuesSkyBox(skyBoxCube, skyBox->textureID);
 	glDepthMask(GL_TRUE);
@@ -772,7 +772,6 @@ void RenderModels()
 	if (isInstancing)
 	{
 		ResetToInstancing();
-		//MoveCar();
 		SetValuesInstanced(car, 10, objMatCar);
 		car->DrawTrianglesInstanced(10);
 

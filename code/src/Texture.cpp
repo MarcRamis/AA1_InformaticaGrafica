@@ -99,7 +99,7 @@ Texture::Texture(unsigned int _id, const char* path, ETextureType type) : m_Path
 	}
 }
 
-Texture::~Texture() { glDeleteTextures(1, &id); }
+Texture::~Texture() { }
 
 void Texture::Clean()
 {

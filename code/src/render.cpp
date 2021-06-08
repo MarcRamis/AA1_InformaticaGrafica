@@ -34,11 +34,6 @@ float moveWTime = 0.0f; // move in world time
 float randomX, randomY, randomZ;
 glm::vec3 random;
 
-// DISCARD EFFECT
-bool isMatrix = false;
-float displaceX = 5.0f;
-float displaceY = 5.0f;
-
 // MODELS
 Model *floorCube;
 Model *skyBoxCube;
@@ -62,6 +57,10 @@ glm::vec3 randomPosition[10];
 
 // TREE INSTANCING --> 100
 glm::mat4 objMatTree[100];
+
+// FP
+bool isFP = false;
+bool onceFP = false;
 
 #pragma endregion
 
@@ -516,62 +515,6 @@ namespace Cube {
 
 #pragma endregion
 
-// FRAMEBUFFER
-#pragma region Framebuffer
-
-namespace FB {
-
-	unsigned int id_frameBuffer;
-	unsigned int id_texture;
-	
-	void Init()
-	{
-		// INIT FBO TEXTURE
-		glGenFramebuffers(1, &id_frameBuffer);
-		glBindFramebuffer(GL_FRAMEBUFFER, id_frameBuffer);
-
-		// CREATE TEXTURE AS WE CREATE IT IN TEXTURE
-		glGenTextures(1, &id_texture);
-		glBindTexture(GL_TEXTURE_2D, id_texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);
-		
-		// BIND TEXTURE
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, id_texture, 0);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	}
-
-	void Draw(glm::mat4 _MVP, glm::mat4 _ModelView, glm::mat4 _projection)
-	{
-		//we store the current values in a temporary variable
-		glm::mat4 t_mvp = _MVP;
-		glm::mat4 t_mv = _ModelView;
-
-		// we set up our framebuffer and draw into it
-		glBindFramebuffer(GL_FRAMEBUFFER, id_frameBuffer);
-		glClearColor(1.f, 1.f, 1.f, 1.f);
-		glViewport(0, 0, 800, 800);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		//glEnable(GL_DEPTH_TEST);
-		_MVP = _projection;
-		_ModelView = glm::mat4(1.f);
-
-		//we restore the previous conditions
-		_MVP = t_mvp;
-		_ModelView = t_mv;
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		
-		//we set up a texture where to draw our FBO:
-		glViewport(0, 0, 800, 800);
-		glBindTexture(GL_TEXTURE_2D, id_texture);
-	}	
-}
-
-#pragma endregion
-
 // STENCIL BUFFER
 #pragma region StencilBuffer
 
@@ -613,8 +556,8 @@ bool DifferenceBetweenTwoPoints(glm::vec3 pos1, glm::vec3 pos2, float diff)
 	float xDifference = pos1.x - pos2.x;
 	float yDifference = pos1.y - pos2.y;
 	float zDifference = pos1.z - pos2.z;
-	float distance = glm::sqrt(glm::pow(xDifference, 2) - glm::pow(yDifference,2) - glm::pow(zDifference, 2));
-
+	float distance = glm::sqrt(glm::pow(xDifference, 2) + glm::pow(yDifference, 2) + glm::pow(zDifference, 2));
+	
 	if (distance < diff)
 	{
 		return true;
@@ -624,7 +567,7 @@ glm::vec3 GetRandomPositionXZ(float min, float max)
 {
 	return glm::vec3(glm::linearRand(min, max), 0.f, glm::linearRand(min, max));
 }
-void UpdatePosition(glm::vec3& pos, glm::vec3& newPos)
+void UpdatePosition(glm::vec3& pos, glm::vec3 newPos)
 {
 	pos += 0.01f * newPos;
 }
@@ -636,7 +579,7 @@ void MoveCar()
 	{
 		UpdatePosition(objPosCar[i], randomPosition[i]);
 
-		if (DifferenceBetweenTwoPoints(objPosCar[i], randomPosition[i], 0.1f))
+		if (DifferenceBetweenTwoPoints(objPosCar[i], randomPosition[i], 1.f))
 		{
 			randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);
 		}
@@ -692,16 +635,6 @@ void SetValues(Model *model, glm::mat4 _t, glm::mat4 _s)
 	model->shader.SetFloat("time", currentTime);
 	model->shader.SetFloat("random", random.x, random.y, random.z);
 
-	model->shader.SetInt("isMatrix", isMatrix);
-	
-	if (isMatrix) {
-		model->shader.SetFloat("displaceX", displaceX);
-		model->shader.SetFloat("displaceY", displaceY);
-	}
-	else {
-		model->shader.SetFloat("displaceX", 0.f);
-		model->shader.SetFloat("displaceY", 0.f);
-	}
 	model->texture.Active();
 	model->shader.SetInt("ourTexture", 0);
 }
@@ -744,71 +677,6 @@ void SetValuesInstanced(Model* model, unsigned int instancesToDraw, glm::mat4 ob
 	model->shader.SetInt("ourTexture", 0);
 }
 
-void InitModels()
-{
-	srand(time(nullptr));
-	glm::mat4 t, s;
-
-	// Init Framebuffer
-	FB::Init();
-
-	frameBuffer = new Model(Shader("res/files/vert.vs", "res/files/frag_billboard.fs", "res/files/geo_billboard.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, 10.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
-		Texture(&FB::id_texture, nullptr, Texture::ETextureType::NONE));
-
-	// Init SkyBox
-	std::vector<std::string> faces
-	{
-			"res/skybox/right.jpg",
-			"res/skybox/left.jpg",
-			"res/skybox/top.jpg",
-			"res/skybox/bottom.jpg",
-			"res/skybox/front.jpg",
-			"res/skybox/back.jpg"
-	};
-	skyBox = new CubeMap(faces);
-
-	skyBoxCube = new Model(Shader("res/files/vert_cubemap.vs", "res/files/frag_cubemap.fs", nullptr), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
-		Texture(nullptr, Texture::ETextureType::NONE));
-
-	// Init Floor
-	floorCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/ground.jpg", Texture::ETextureType::JPG));
-
-	// Init 
-	tree = new Model(Shader("res/files/vert_instancing_trees.vs", "res/files/frag_billboard.fs", "res/files/geo_billboard.gs"), "res/cube.obj",
-		ObjectParameters(glm::vec3(0.f, 3.5f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/tree.png", Texture::ETextureType::PNG));
-
-	for (int i = 0; i < 100; i++)
-	{
-		glm::vec3 randomPos = GetRandomPositionXZ(-150.f, 150.f);
-		t = glm::translate(glm::mat4(), glm::vec3(tree->obj.pos + randomPos));
-		s = glm::scale(glm::mat4(), glm::vec3(1.f, 1.f, 1.f));
-		objMatTree[i] = t * s;
-	}
-
-	// Init Car
-	stbi_set_flip_vertically_on_load(true);
-	car = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_car_nowindow.fs", "res/files/geo.gs"), "res/Camaro.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
-		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
-	stbi_set_flip_vertically_on_load(false);
-
-	for (int i = 0; i < 10; i++)
-	{
-		randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);
-		objPosCar[i] = glm::vec3(glm::linearRand(-10.f, 10.f), 0.f, glm::linearRand(-10.f, 10.f));
-		t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
-		s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
-		objMatCar[i] = t * s;
-	}
-	carStencil = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/Camaro.obj",
-		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 0.3f), true, true, false),
-		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
-}
 void RenderModels()
 {
 	glm::mat4 t, s;
@@ -833,41 +701,170 @@ void RenderModels()
 	s = glm::scale(glm::mat4(), glm::vec3(100.f, 1.0f, 100.f));
 	SetValues(floorCube, t, s);
 	floorCube->DrawTriangles();
+
+	SetValuesInstanced(tree, 100, objMatTree);
+	tree->DrawPointsInstanced(100);
+
+	//t = glm::translate(glm::mat4(), glm::vec3(frameBuffer->obj.pos));
+	//s = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f));
+	//SetValues(frameBuffer, t, s);
+	//frameBuffer->DrawTriangles();
+	//FB::Draw(RenderVars::_MVP,RenderVars::_modelView,RenderVars::_projection);
 	
 	StencilBuffer::On();	// Here we draw all that will contain an outline
 	
-	MoveCar();
+	//MoveCar();
 	SetValuesInstanced(car, 10, objMatCar);
 	car->DrawTrianglesInstanced(10);
 	
 	StencilBuffer::Off();
-	StencilBuffer::DisableDepth();	// Here we draw the outline of the same object.
+	//StencilBuffer::DisableDepth();	// Here we draw the outline of the same object.
 									// It must be bigger than the object
 
 	SetValuesInstanced(carStencil, 10, objMatCar);
 	carStencil->DrawTrianglesInstanced(10);
 	
 	StencilBuffer::On();	// Set on because if not, it will draw the object in the screen
-	StencilBuffer::EnableDepth();
-
-	SetValuesInstanced(tree, 100, objMatTree);
-	tree->DrawPointsInstanced(100);
-
-	t = glm::translate(glm::mat4(), glm::vec3(frameBuffer->obj.pos));
-	s = glm::scale(glm::mat4(), glm::vec3(1.f, 1.f, 1.f));
-	SetValues(frameBuffer, t, s);
-	frameBuffer->DrawPoints();
-	//FB::Draw(RenderVars::_MVP,RenderVars::_modelView,RenderVars::_projection);
-	glBindFramebuffer(GL_FRAMEBUFFER, FB::id_frameBuffer);
-	glClearColor(1.f, 1.f, 1.f, 1.f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	//StencilBuffer::EnableDepth();
 	
-	// aqui se pinta todo lo que queramos que se vea en el framebuffer
-	
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//glBindFramebuffer(GL_FRAMEBUFFER, FB::id_frameBuffer);
+	//glClearColor(1.f, 1.f, 1.f, 1.f);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	//
+	//// aqui se pinta todo lo que queramos que se vea en el framebuffer
+	//
+	//glActiveTexture(GL_TEXTURE0);
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 #pragma endregion
+
+// FRAMEBUFFER
+#pragma region Framebuffer
+
+namespace FB {
+
+	unsigned int id_frameBuffer;
+	unsigned int id_texture;
+
+	void Init()
+	{
+		// INIT FBO TEXTURE
+		glGenFramebuffers(1, &id_frameBuffer);
+		glBindFramebuffer(GL_FRAMEBUFFER, id_frameBuffer);
+
+		// CREATE TEXTURE AS WE CREATE IT IN TEXTURE
+		glGenTextures(1, &id_texture);
+		glBindTexture(GL_TEXTURE_2D, id_texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		
+		// BIND TEXTURE
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, id_texture, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	void Draw(glm::mat4 _MVP, glm::mat4 _ModelView, glm::mat4 _projection)
+	{
+		//we store the current values in a temporary variable
+		glm::mat4 t_mvp = _MVP;
+		glm::mat4 t_mv = _ModelView;
+
+		// we set up our framebuffer and draw into it
+		glBindFramebuffer(GL_FRAMEBUFFER, id_frameBuffer);
+
+		glClearColor(0.2f, 0.2f, 0.2f, 1.f);
+		
+		glViewport(0, 0, 600, 200);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		_MVP = _projection;
+		_ModelView = glm::mat4(1.f);
+
+		//we restore the previous conditions
+		_MVP = t_mvp;
+		_ModelView = t_mv;
+
+		RenderModels();
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+}
+
+#pragma endregion
+
+void InitModels()
+{
+	srand(time(nullptr));
+	glm::mat4 t, s;
+	
+	// Init Framebuffer
+	frameBuffer = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", nullptr), "res/plane.obj",
+		ObjectParameters(glm::vec3(0.f, 2.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
+		Texture(FB::id_texture, nullptr, Texture::ETextureType::NONE));
+	FB::Init();
+
+	// Init SkyBox
+	std::vector<std::string> faces
+	{
+			"res/skybox/right.jpg",
+			"res/skybox/left.jpg",
+			"res/skybox/top.jpg",
+			"res/skybox/bottom.jpg",
+			"res/skybox/front.jpg",
+			"res/skybox/back.jpg"
+	};
+	skyBox = new CubeMap(faces);
+
+	skyBoxCube = new Model(Shader("res/files/vert_cubemap.vs", "res/files/frag_cubemap.fs", nullptr), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), false, false, false),
+		Texture(nullptr, Texture::ETextureType::NONE));
+
+	// Init Floor
+	floorCube = new Model(Shader("res/files/vert.vs", "res/files/frag.fs", "res/files/geo.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, -1.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/ground.jpg", Texture::ETextureType::JPG));
+
+	// Init 
+	tree = new Model(Shader("res/files/vert_instancing_trees.vs", "res/files/frag_billboard.fs", "res/files/geo_billboard.gs"), "res/cube.obj",
+		ObjectParameters(glm::vec3(0.f, 1.5f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/tree.png", Texture::ETextureType::PNG));
+
+	tree->vertices.clear();
+	tree->normals.clear();
+	tree->uvs.clear();
+	tree->vertices.push_back(glm::vec3(0.f, 0.f, 0.f));
+	tree->normals.push_back(glm::vec3(0.f, 0.f, 0.f));
+	tree->uvs.push_back(glm::vec3(0.f, 0.f, 0.f));
+
+	for (int i = 0; i < 100; i++)
+	{
+		glm::vec3 randomPos = GetRandomPositionXZ(-150.f, 150.f);
+		t = glm::translate(glm::mat4(), glm::vec3(tree->obj.pos + randomPos));
+		s = glm::scale(glm::mat4(), glm::vec3(1.f, 1.f, 1.f));
+		objMatTree[i] = t * s;
+	}
+
+	// Init Car
+	stbi_set_flip_vertically_on_load(true);
+	car = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_car_nowindow.fs", "res/files/geo.gs"), "res/Camaro.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 1.f), true, true, false),
+		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+	stbi_set_flip_vertically_on_load(false);
+
+	for (int i = 0; i < 10; i++)
+	{
+		//randomPosition[i] = GetRandomPositionXZ(-10.f, 10.f);
+		//objPosCar[i] = glm::vec3(randomPosition[i]);
+		objPosCar[i] = car->obj.pos + glm::vec3(i * 5.f, 0.f, 0.f);
+		t = glm::translate(glm::mat4(), glm::vec3(objPosCar[i]));
+		s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
+		objMatCar[i] = t * s;
+	}
+	carStencil = new Model(Shader("res/files/vert_instancing_car.vs", "res/files/frag_only_color.fs", "res/files/geo.gs"), "res/Camaro.obj",
+		ObjectParameters(glm::vec3(0.f, 0.f, 0.f), glm::vec4(1.f, 1.f, 1.f, 0.5f), true, true, false),
+		Texture("res/Camaro/Camaro_AlbedoTransparency_alt.png", Texture::ETextureType::PNG));
+}
 
 // RENDER STATE
 void GLinit(int width, int height) {
@@ -876,7 +873,6 @@ void GLinit(int width, int height) {
 	glClearDepth(1.f);
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_DEPTH_TEST);
-	//glEnable(GL_CULL_FACE);
 
 	RV::_projection = glm::perspective(RV::FOV, (float)width / (float)height, RV::zNear, RV::zFar);
 
@@ -889,24 +885,48 @@ void GLcleanup() {
 	Axis::cleanupAxis();	
 }
 void GLrender(float dt) {
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	RV::_modelView = glm::mat4(1.f);
-	RV::_modelView = glm::translate(RV::_modelView, glm::vec3(RV::panv[0], RV::panv[1], RV::panv[2]));
-	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[1], glm::vec3(1.f, 0.f, 0.f));
-	RV::_modelView = glm::rotate(RV::_modelView, RV::rota[0], glm::vec3(0.f, 1.f, 0.f));
+	if (!isFP)
+	{
+		RV::_modelView = glm::mat4(1.f);
+
+		RV::_modelView = glm::translate(RV::_modelView, glm::vec3(RV::panv[0], RV::panv[1], RV::panv[2]));
+		RV::_modelView = glm::rotate(RV::_modelView, RV::rota[1], glm::vec3(1.f, 0.f, 0.f));
+		RV::_modelView = glm::rotate(RV::_modelView, RV::rota[0], glm::vec3(0.f, 1.f, 0.f));
+
+		RV::_MVP = RV::_projection * RV::_modelView;
+	}
+	else
+	{
+		RV::_modelView = glm::mat4(1.f);
+		RV::_modelView = glm::translate(RV::_modelView, glm::vec3(glm::vec3(objPosCar[0].x, -objPosCar[0].y, objPosCar[0].z) + glm::vec3(0.f, -1.8f,0.f)));
+
+		RV::_modelView = glm::rotate(RV::_modelView, RV::rota[1], glm::vec3(1.f, 0.f, 0.f));
+		RV::_modelView = glm::rotate(RV::_modelView, RV::rota[0], glm::vec3(0.f, 1.f, 0.f));
+
+		RV::_MVP = RV::_projection * RV::_modelView;
+	}
 	
-	RV::_MVP = RV::_projection * RV::_modelView;
-	
-	// Get camera position
+	// GET CAMERA POSITION
 	wPos = glm::vec4(0.f, 0.f, 0.f, 1.f);
 	glm::mat4 view_inv = glm::inverse(RV::_modelView);
 	wPos = view_inv * wPos;
-
-	Axis::drawAxis();
 	
+	//glm::mat4 t, s;
+	//
+	//t = glm::translate(glm::mat4(), glm::vec3(frameBuffer->obj.pos));
+	//s = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f));
+	//SetValues(frameBuffer, t, s);
+	//frameBuffer->DrawTriangles();
+	//FB::Draw(RenderVars::_MVP, RenderVars::_modelView, RenderVars::_projection);
+	//glViewport(0, 0, 800, 600);
+
 	RenderModels();
 	
+
+	Axis::drawAxis();
 	ImGui::Render();
 }
 
@@ -918,26 +938,29 @@ void GUI() {
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		/////////////////////////////////////////////////////////
 
-		if (ImGui::TreeNode("Phong Shading"))
-		{
-			ImGui::SliderFloat3("Light Position", glm::value_ptr(phong.pos), -1.f, 1.f);
-
-			ImGui::ColorEdit4("Ambient Color", glm::value_ptr(phong.ambient_color));
-			ImGui::ColorEdit4("Diffuse Color", glm::value_ptr(phong.diffuse_color));
-			ImGui::ColorEdit4("Specular Color", glm::value_ptr(phong.specular_color));
-
-			ImGui::SliderFloat("Ambient Strength", &phong.ambient_strength, 0.0f, 1.0f);
-			ImGui::SliderFloat("Diffuse Strength", &phong.diffuse_strength, 0.0f, 1.0f);
-			ImGui::SliderFloat("Specular Strength", &phong.specular_strength, 0.0f, 1.0f);
-			ImGui::SliderFloat("Shininess", &phong.shininess, 0, 255);
-
-			ImGui::TreePop();
-		}
+		//if (ImGui::TreeNode("Phong Shading"))
+		//{
+		//	ImGui::SliderFloat3("Light Position", glm::value_ptr(phong.pos), -1.f, 1.f);
+		//
+		//	ImGui::ColorEdit4("Ambient Color", glm::value_ptr(phong.ambient_color));
+		//	ImGui::ColorEdit4("Diffuse Color", glm::value_ptr(phong.diffuse_color));
+		//	ImGui::ColorEdit4("Specular Color", glm::value_ptr(phong.specular_color));
+		//
+		//	ImGui::SliderFloat("Ambient Strength", &phong.ambient_strength, 0.0f, 1.0f);
+		//	ImGui::SliderFloat("Diffuse Strength", &phong.diffuse_strength, 0.0f, 1.0f);
+		//	ImGui::SliderFloat("Specular Strength", &phong.specular_strength, 0.0f, 1.0f);
+		//	ImGui::SliderFloat("Shininess", &phong.shininess, 0, 255);
+		//
+		//	ImGui::TreePop();
+		//}
 
 		
 		#pragma region OLD
 		
 #pragma endregion
+
+		ImGui::Checkbox("First Person Camera", &isFP);
+		ImGui::DragFloat("Alpha Window",&carStencil->obj.color.a,0.1f, 0.f,1.f);
 		//
 		//if (ImGui::TreeNode("Car"))
 		//{

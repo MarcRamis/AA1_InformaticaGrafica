@@ -48,17 +48,11 @@ Texture::Texture(const char* path, ETextureType type) : m_Path(path)
 		// CLEAN
 		stbi_image_free(data);
 	}
-	else {
-		std::cout << "No texture" << std::endl;
-	}
 }
 
-Texture::Texture(unsigned int* _id, const char* path, ETextureType type) : m_Path(path)
+Texture::Texture(unsigned int _id, const char* path, ETextureType type) : m_Path(path)
 {
-	if (_id != nullptr)
-	{
-		id = *_id;
-	}
+	id = _id;
 
 	if (path != nullptr)
 	{
@@ -105,7 +99,7 @@ Texture::Texture(unsigned int* _id, const char* path, ETextureType type) : m_Pat
 	}
 }
 
-Texture::~Texture() {}
+Texture::~Texture() { glDeleteTextures(1, &id); }
 
 void Texture::Clean()
 {

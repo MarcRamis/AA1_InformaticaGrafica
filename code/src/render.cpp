@@ -756,7 +756,8 @@ void RenderModels()
 	SetValuesSkyBox(skyBoxCube, skyBox->textureID);
 	glDepthMask(GL_TRUE);
 
-	StencilBuffer::EnableStencil	StencilBuffer::Off();		// Here we draw all that doesn't contain stencil
+	StencilBuffer::EnableStencil();
+	StencilBuffer::Off();		// Here we draw all that doesn't contain stencil
 	
 	t = glm::translate(glm::mat4(), glm::vec3(floorCube->obj.pos));
 	s = glm::scale(glm::mat4(), glm::vec3(100.f, 1.0f, 100.f));

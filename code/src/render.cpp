@@ -597,7 +597,6 @@ void ResetToInstancing()
 		onceInstancing = false;
 	}
 }
-
 void ResetToNoInstancing()
 {
 	if(onceNoInstancing)
@@ -637,11 +636,12 @@ bool DifferenceBetweenTwoPoints(glm::vec3 pos1, glm::vec3 pos2, float diff)
 	float yDifference = pos1.y - pos2.y;
 	float zDifference = pos1.z - pos2.z;
 	float distance = glm::sqrt(glm::pow(xDifference, 2) + glm::pow(yDifference, 2) + glm::pow(zDifference, 2));
-	
+
 	if (distance < diff)
 	{
 		return true;
 	}
+	return false;
 }
 glm::vec3 GetRandomPositionXZ(float min, float max)
 {
@@ -755,12 +755,6 @@ void RenderModels()
 	skyBoxCube->objMat = t * s;
 	SetValuesSkyBox(skyBoxCube, skyBox->textureID);
 	glDepthMask(GL_TRUE);
-	
-	// NO INSTANCING
-	//t = glm::translate(glm::mat4(), glm::vec3(car->obj.pos));
-	//s = glm::scale(glm::mat4(), glm::vec3(0.02f, 0.02f, 0.02f));
-	//SetValues(car,t,s);
-	//car->DrawTriangles();
 
 	StencilBuffer::EnableStencil();
 	StencilBuffer::Off();		// Here we draw all that doesn't contain an outline

@@ -795,6 +795,8 @@ namespace FB {
 
 void InitModels()
 {
+	//glEnable(GL_DEPTH_TEST);
+
 	srand(time(nullptr));
 	glm::mat4 t, s;
 	
